@@ -118,11 +118,11 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .pick-group{flex:1;}
 .pick-label{font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:6px;text-align:center;}
 .pick-options{display:flex;gap:4px;}
-.pick-btn{flex:1;padding:8px 4px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:600;cursor:pointer;transition:all 0.15s;text-align:center;}
+.pick-btn{flex:1;padding:8px 4px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:600;cursor:pointer;transition:background 0.08s,color 0.08s,border-color 0.08s;text-align:center;}
 .pick-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
-.pick-btn.selected{background:var(--accent);color:#0a0e1a;border-color:var(--accent);animation:pickPop 0.25s cubic-bezier(0.34,1.56,0.64,1);}
+.pick-btn.selected{background:var(--accent);color:#0a0e1a;border-color:var(--accent);transition:all 0.08s ease;}
 .pick-btn:disabled{cursor:not-allowed;opacity:0.5;}
-@keyframes pickPop{0%{transform:scale(1)}50%{transform:scale(1.08)}100%{transform:scale(1)}}
+
 .pick-saved-toast{position:absolute;top:8px;right:12px;background:rgba(46,213,115,0.15);border:1px solid rgba(46,213,115,0.3);border-radius:20px;padding:3px 10px;font-size:0.7rem;font-weight:600;color:var(--green);animation:toastIn 0.2s ease,toastOut 0.3s ease 1.2s forwards;pointer-events:none;}
 @keyframes toastIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes toastOut{from{opacity:1}to{opacity:0}}
