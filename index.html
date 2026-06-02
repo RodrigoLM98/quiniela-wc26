@@ -400,12 +400,14 @@ function App(){
 
   async function savePick(matchId,field,value){
     if(!user)return;
-    setSavingPick(`${matchId}-${field}`);
     const existing=picks[matchId]||{};
-    const newPick={...existing,user_id:user.id,match_id:matchId,[field]:value,updated_at:new Date().toISOString()};
-    const{data,error}=await sb.from('picks').upsert(newPick,{onConflict:'user_id,match_id'}).select().single();
-    if(!error&&data){setPicks(prev=>({...prev,[matchId]:data}));setJustSaved(`${matchId}-${field}`);setTimeout(()=>setJustSaved(null),1500);}
-    setSavingPick(null);
+    const optimistic={...existing,user_id:user.id,match_id:matchId,[field]:value,updated_at:new Date().toISOString()};
+    setPicks(prev=>({...prev,[matchId]:optimistic}));
+    setJustSaved(`${matchId}-${field}`);
+    setTimeout(()=>setJustSaved(null),1500);
+    const{data,error}=await sb.from('picks').upsert(optimistic,{onConflict:'user_id,match_id'}).select().single();
+    if(error){setPicks(prev=>({...prev,[matchId]:existing}));}
+    else if(data){setPicks(prev=>({...prev,[matchId]:data}));}
   }
 
   async function saveAdminScore(matchId){
@@ -573,7 +575,7 @@ function MatchCard({match,pick,savePick,savingPick,justSaved}){
             <div className="pick-label">Resultado</div>
             <div className="pick-options">
               {[{val:'home',label:match.home_team==='TBD'?'Local':match.home_team.split(' ')[0]},{val:'draw',label:'Empate'},{val:'away',label:match.away_team==='TBD'?'Visitante':match.away_team.split(' ')[0]}].map(opt=>(
-                <button key={opt.val} className={`pick-btn ${pick?.result===opt.val?'selected':''}`} disabled={locked||savingPick===`${match.id}-result`} onClick={()=>savePick(match.id,'result',opt.val)}>{opt.label}</button>
+                <button key={opt.val} className={`pick-btn ${pick?.result===opt.val?'selected':''}`} disabled={locked} onClick={()=>savePick(match.id,'result',opt.val)}>{opt.label}</button>
               ))}
             </div>
           </div>
@@ -581,7 +583,7 @@ function MatchCard({match,pick,savePick,savingPick,justSaved}){
             <div className="pick-label">Goles totales</div>
             <div className="pick-options">
               {[1,2,3,4].map(g=>(
-                <button key={g} className={`pick-btn ${pick?.goals===g?'selected':''}`} disabled={locked||savingPick===`${match.id}-goals`} onClick={()=>savePick(match.id,'goals',g)}>{g===4?'4+':g}</button>
+                <button key={g} className={`pick-btn ${pick?.goals===g?'selected':''}`} disabled={locked} onClick={()=>savePick(match.id,'goals',g)}>{g===4?'4+':g}</button>
               ))}
             </div>
           </div>
