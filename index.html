@@ -398,7 +398,7 @@ function App(){
     setAuthLoading(false);
   }
 
-  async function savePick(matchId,field,value){
+  const savePick=useCallback(async function savePick(matchId,field,value){
     if(!user)return;
     const existing=picks[matchId]||{};
     const optimistic={...existing,user_id:user.id,match_id:matchId,[field]:value,updated_at:new Date().toISOString()};
@@ -408,7 +408,7 @@ function App(){
     const{data,error}=await sb.from('picks').upsert(optimistic,{onConflict:'user_id,match_id'}).select().single();
     if(error){setPicks(prev=>({...prev,[matchId]:existing}));}
     else if(data){setPicks(prev=>({...prev,[matchId]:data}));}
-  }
+  },[user,picks]);
 
   async function saveAdminScore(matchId){
     const s=adminScores[matchId];if(!s||s.home==null||s.away==null)return;
@@ -544,7 +544,7 @@ function PicksTab({matches,picks,savePick,savingPick,justSaved,stageFilter,setSt
   );
 }
 
-function MatchCard({match,pick,savePick,savingPick,justSaved}){
+const MatchCard = React.memo(function MatchCard({match,pick,savePick,justSaved}){
   const locked=isLocked(match.match_time);
   const soon=isClosingSoon(match.match_time);
   const hasPick=pick?.result&&pick?.goals;
@@ -593,6 +593,7 @@ function MatchCard({match,pick,savePick,savingPick,justSaved}){
   );
 }
 
+});
 function RankingsTab({rankings,userId,loading,onRefresh}){
   if(loading)return<div className="loading"><div className="spinner"/><span>Cargando ranking...</span></div>;
   return(
