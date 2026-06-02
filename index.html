@@ -349,7 +349,12 @@ function App(){
       if(session){setUser(session.user);loadProfile(session.user.id,false);}
       else setLoading(false);
     });
-    sb.auth.onAuthStateChange((_e,session)=>{
+    sb.auth.onAuthStateChange((event,session)=>{
+      if(event==='PASSWORD_RECOVERY'){
+        // Let AuthScreen handle the reset form via hash detection
+        setLoading(false);
+        return;
+      }
       if(session){setUser(session.user);loadProfile(session.user.id,false);}
       else{setUser(null);setProfile(null);setLoading(false);}
     });
