@@ -447,7 +447,7 @@ function App(){
           <div className="picks-layout">
             <PicksTab matches={matches} picks={picks} stageFilter={stageFilter} setStageFilter={setStageFilter} savePick={savePick} savingPick={savingPick} justSaved={justSaved} onGroupChange={setSelectedGroup}/>
             {stageFilter==='Grupos'&&(
-              <div className="sidebar">
+              <div className="sidebar" id="standings-sidebar">
                 <GroupStandings matches={matches} selectedGroup={selectedGroup} onSelectGroup={setSelectedGroup}/>
               </div>
             )}
@@ -529,10 +529,15 @@ function PicksTab({matches,picks,savePick,savingPick,justSaved,stageFilter,setSt
       {stageFilter==='Grupos'&&groupedMatches
         ?ALL_GROUPS.filter(g=>groupedMatches[g]).map(g=>(
           <div key={g}>
-            <div onClick={()=>onGroupChange(g)} style={{fontSize:'0.7rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'1px',color:'var(--accent2)',marginBottom:8,marginTop:16,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+            <div style={{fontSize:'0.7rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'1px',color:'var(--accent2)',marginBottom:8,marginTop:16,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
               <span>Grupo {g}</span>
-              <span style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:4,padding:'1px 6px',fontSize:'0.6rem',color:'var(--muted)'}}>ver posiciones →</span>
+              <span onClick={()=>{onGroupChange(g);document.getElementById('standings-sidebar')?.scrollIntoView({behavior:'smooth',block:'start'});}} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:4,padding:'2px 8px',fontSize:'0.6rem',color:'var(--muted)',cursor:'pointer'}}>posiciones ↓</span>
             </div>
+            {isMobile&&expandedGroup===g&&(
+              <div style={{marginBottom:12}}>
+                <GroupStandings matches={matches} selectedGroup={g} onSelectGroup={()=>{}}/>
+              </div>
+            )}
             {groupedMatches[g].map(match=><MatchCard key={match.id} match={match} pick={picks[match.id]} savePick={savePick} savingPick={savingPick} justSaved={justSaved}/>)}
           </div>
         ))
