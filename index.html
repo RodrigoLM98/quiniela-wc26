@@ -591,9 +591,8 @@ const MatchCard = React.memo(function MatchCard({match,pick,savePick,justSaved})
       </div>
     </div>
   );
-}
-
 });
+
 function RankingsTab({rankings,userId,loading,onRefresh}){
   if(loading)return<div className="loading"><div className="spinner"/><span>Cargando ranking...</span></div>;
   return(
