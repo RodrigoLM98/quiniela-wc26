@@ -190,7 +190,7 @@ function calcPoints(pick,match){
   const actual=match.home_score>match.away_score?'home':match.away_score>match.home_score?'away':'draw';
   if(pick.result===actual)pts+=3;
   const total=match.home_score+match.away_score;
-  const ag=total>=4?4:total<1?1:total;
+  const ag=total>=4?4:total;
   if(pick.goals===ag)pts+=1;
   return pts;
 }
@@ -587,7 +587,7 @@ function MatchCard({match,pick,savePick,justSaved}){
           <div className="pick-group" style={{maxWidth:170}}>
             <div className="pick-label">Goles totales</div>
             <div className="pick-options">
-              {[1,2,3,4].map(g=>(
+              {[0,1,2,3,4].map(g=>(
                 <button key={g} className={`pick-btn ${pick?.goals===g?'selected':''}`} disabled={locked} onClick={()=>savePick(match.id,'goals',g)}>{g===4?'4+':g}</button>
               ))}
             </div>
