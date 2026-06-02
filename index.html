@@ -120,9 +120,8 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .pick-options{display:flex;gap:4px;}
 .pick-btn{flex:1;padding:8px 4px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:600;cursor:pointer;transition:background 0.08s,color 0.08s,border-color 0.08s;text-align:center;}
 .pick-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
-.pick-btn.selected{background:var(--accent);color:#0a0e1a;border-color:var(--accent);transition:all 0.08s ease;}
+.pick-btn.selected{background:var(--accent);color:#0a0e1a;border-color:var(--accent);}
 .pick-btn:disabled{cursor:not-allowed;opacity:0.5;}
-
 .pick-saved-toast{position:absolute;top:8px;right:12px;background:rgba(46,213,115,0.15);border:1px solid rgba(46,213,115,0.3);border-radius:20px;padding:3px 10px;font-size:0.7rem;font-weight:600;color:var(--green);animation:toastIn 0.2s ease,toastOut 0.3s ease 1.2s forwards;pointer-events:none;}
 @keyframes toastIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @keyframes toastOut{from{opacity:1}to{opacity:0}}
@@ -162,6 +161,9 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .empty-state{text-align:center;padding:3rem;color:var(--muted);}
 .refresh-btn{background:var(--surface2);border:1px solid var(--border);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:0.75rem;padding:6px 12px;border-radius:8px;cursor:pointer;transition:all 0.2s;}
 .refresh-btn:hover{color:var(--text);border-color:var(--muted);}
+.group-label{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent2);margin-bottom:8px;margin-top:16px;display:flex;align-items:center;justify-content:space-between;}
+.group-label-btn{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:0.6rem;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;}
+.group-label-btn:hover{color:var(--text);border-color:var(--muted);}
 </style>
 </head>
 <body>
@@ -172,7 +174,7 @@ const SUPABASE_URL = 'https://uoevtnrezmbujdlkqvkc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVvZXZ0bnJlem1idWpkbGtxdmtjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNDkzMjUsImV4cCI6MjA5NTkyNTMyNX0.FwG3d8Dh4TeFUEWnkqv7KGUuXF7McDoHU3HFZJclI2c';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const FLAGS = {'México':'🇲🇽','Estados Unidos':'🇺🇸','Canadá':'🇨🇦','Argentina':'🇦🇷','Brasil':'🇧🇷','Francia':'🇫🇷','Alemania':'🇩🇪','España':'🇪🇸','Inglaterra':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','Portugal':'🇵🇹','Uruguay':'🇺🇾','Colombia':'🇨🇴','Ecuador':'🇪🇨','Marruecos':'🇲🇦','Senegal':'🇸🇳','Japón':'🇯🇵','Corea del Sur':'🇰🇷','Arabia Saudita':'🇸🇦','Irán':'🇮🇷','Australia':'🇦🇺','Países Bajos':'🇳🇱','Bélgica':'🇧🇪','Croacia':'🇭🇷','Suiza':'🇨🇭','Dinamarca':'🇩🇰','Turquía':'🇹🇷','Escocia':'🏴󠁧󠁢󠁳󠁣󠁴󠁿','Panamá':'🇵🇦','Venezuela':'🇻🇪','Paraguay':'🇵🇾','Qatar':'🇶🇦','Argelia':'🇩🇿','Egipto':'🇪🇬','Sudáfrica':'🇿🇦','Costa de Marfil':'🇨🇮','Haití':'🇭🇹','Noruega':'🇳🇴','Iraq':'🇮🇶','Austria':'🇦🇹','Jordania':'🇯🇴','Uzbekistán':'🇺🇿','DR Congo':'🇨🇩','Chequia':'🇨🇿','Bosnia':'🇧🇦','Curazao':'🇨🇼','Túnez':'🇹🇳','Suecia':'🇸🇪','Nueva Zelanda':'🇳🇿','Cabo Verde':'🇨🇻','Ghana':'🇬🇭','Serbia':'🇷🇸','TBD':'🏳️'};
+const FLAGS = {'México':'🇲🇽','Estados Unidos':'🇺🇸','Canadá':'🇨🇦','Argentina':'🇦🇷','Brasil':'🇧🇷','Francia':'🇫🇷','Alemania':'🇩🇪','España':'🇪🇸','Inglaterra':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','Portugal':'🇵🇹','Uruguay':'🇺🇾','Colombia':'🇨🇴','Ecuador':'🇪🇨','Marruecos':'🇲🇦','Senegal':'🇸🇳','Japón':'🇯🇵','Corea del Sur':'🇰🇷','Arabia Saudita':'🇸🇦','Australia':'🇦🇺','Países Bajos':'🇳🇱','Bélgica':'🇧🇪','Croacia':'🇭🇷','Suiza':'🇨🇭','Dinamarca':'🇩🇰','Turquía':'🇹🇷','Escocia':'🏴󠁧󠁢󠁳󠁣󠁴󠁿','Panamá':'🇵🇦','Venezuela':'🇻🇪','Paraguay':'🇵🇾','Qatar':'🇶🇦','Argelia':'🇩🇿','Egipto':'🇪🇬','Sudáfrica':'🇿🇦','Costa de Marfil':'🇨🇮','Haití':'🇭🇹','Noruega':'🇳🇴','Iraq':'🇮🇶','Austria':'🇦🇹','Jordania':'🇯🇴','Uzbekistán':'🇺🇿','DR Congo':'🇨🇩','Chequia':'🇨🇿','Bosnia':'🇧🇦','Curazao':'🇨🇼','Túnez':'🇹🇳','Suecia':'🇸🇪','Nueva Zelanda':'🇳🇿','Cabo Verde':'🇨🇻','Ghana':'🇬🇭','Serbia':'🇷🇸','Irán':'🇮🇷','Nigeria':'🇳🇬','Chile':'🇨🇱','Polonia':'🇵🇱','TBD':'🏳️'};
 const STAGES = ['Grupos','Octavos','Cuartos','Semis','Final'];
 const ALL_GROUPS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
 
@@ -335,7 +337,6 @@ function App(){
   const[authLoading,setAuthLoading]=useState(false);
   const[authError,setAuthError]=useState('');
   const[stageFilter,setStageFilter]=useState('Grupos');
-  const[savingPick,setSavingPick]=useState(null);
   const[justSaved,setJustSaved]=useState(null);
   const[adminScores,setAdminScores]=useState({});
   const[adminSaving,setAdminSaving]=useState(null);
@@ -387,18 +388,15 @@ function App(){
     if(authMode==='login'){
       const{error}=await sb.auth.signInWithPassword({email,password});
       if(error)setAuthError(error.message);
-    } else {
+    }else{
       const{data,error}=await sb.auth.signUp({email,password});
       if(error){setAuthError(error.message);setAuthLoading(false);return;}
-      if(data.user){
-        await sb.from('profiles').insert({id:data.user.id,username});
-        setShowOnboarding(true);
-      }
+      if(data.user){await sb.from('profiles').insert({id:data.user.id,username});setShowOnboarding(true);}
     }
     setAuthLoading(false);
   }
 
-  const savePick=useCallback(async function savePick(matchId,field,value){
+  const savePick=useCallback(async function(matchId,field,value){
     if(!user)return;
     const existing=picks[matchId]||{};
     const optimistic={...existing,user_id:user.id,match_id:matchId,[field]:value,updated_at:new Date().toISOString()};
@@ -418,6 +416,16 @@ function App(){
     setMatches(prev=>prev.map(m=>m.id===matchId?{...m,home_score:hs,away_score:as,status:'finished'}:m));
     setAdminSaving(null);
   }
+
+  function scrollToStandings(group){
+    onGroupChange(group);
+    setTimeout(()=>{
+      const el=document.getElementById('standings-sidebar');
+      if(el)el.scrollIntoView({behavior:'smooth',block:'start'});
+    },50);
+  }
+
+  function onGroupChange(g){setSelectedGroup(g);}
 
   if(loading)return<div className="app"><div className="loading"><div className="spinner"/><span>Cargando quiniela...</span></div></div>;
   if(!user||!profile)return<AuthScreen onAuth={handleAuth} authMode={authMode} setAuthMode={setAuthMode} loading={authLoading} error={authError}/>;
@@ -445,10 +453,10 @@ function App(){
       <main className="main">
         {tab==='picks'&&(
           <div className="picks-layout">
-            <PicksTab matches={matches} picks={picks} stageFilter={stageFilter} setStageFilter={setStageFilter} savePick={savePick} savingPick={savingPick} justSaved={justSaved} onGroupChange={setSelectedGroup}/>
+            <PicksTab matches={matches} picks={picks} stageFilter={stageFilter} setStageFilter={setStageFilter} savePick={savePick} justSaved={justSaved} onGroupChange={onGroupChange} scrollToStandings={scrollToStandings}/>
             {stageFilter==='Grupos'&&(
               <div className="sidebar" id="standings-sidebar">
-                <GroupStandings matches={matches} selectedGroup={selectedGroup} onSelectGroup={setSelectedGroup}/>
+                <GroupStandings matches={matches} selectedGroup={selectedGroup} onSelectGroup={onGroupChange}/>
               </div>
             )}
           </div>
@@ -467,7 +475,6 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error}){
   const[forgotMode,setForgotMode]=useState(false);
   const[forgotLoading,setForgotLoading]=useState(false);
   const[forgotMsg,setForgotMsg]=useState('');
-
   async function handleForgot(e){
     e.preventDefault();setForgotLoading(true);setForgotMsg('');
     const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.href});
@@ -475,7 +482,6 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error}){
     else setForgotMsg('✅ Revisa tu correo, te enviamos el link para restablecer tu contraseña.');
     setForgotLoading(false);
   }
-
   if(forgotMode){
     return(
       <div className="auth-wrap"><div className="auth-card">
@@ -490,7 +496,6 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error}){
       </div></div>
     );
   }
-
   return(
     <div className="auth-wrap"><div className="auth-card">
       <div className="auth-title">QUINIELA<br/>WC <span style={{color:'var(--accent2)'}}>2026</span></div>
@@ -513,7 +518,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error}){
   );
 }
 
-function PicksTab({matches,picks,savePick,savingPick,justSaved,stageFilter,setStageFilter,onGroupChange}){
+function PicksTab({matches,picks,savePick,justSaved,stageFilter,setStageFilter,onGroupChange,scrollToStandings}){
   const filtered=matches.filter(m=>m.stage===stageFilter);
   const pickedCount=filtered.filter(m=>picks[m.id]?.result&&picks[m.id]?.goals).length;
   const pct=filtered.length>0?Math.round((pickedCount/filtered.length)*100):0;
@@ -529,27 +534,22 @@ function PicksTab({matches,picks,savePick,savingPick,justSaved,stageFilter,setSt
       {stageFilter==='Grupos'&&groupedMatches
         ?ALL_GROUPS.filter(g=>groupedMatches[g]).map(g=>(
           <div key={g}>
-            <div style={{fontSize:'0.7rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'1px',color:'var(--accent2)',marginBottom:8,marginTop:16,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div className="group-label">
               <span>Grupo {g}</span>
-              <span onClick={()=>{onGroupChange(g);document.getElementById('standings-sidebar')?.scrollIntoView({behavior:'smooth',block:'start'});}} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:4,padding:'2px 8px',fontSize:'0.6rem',color:'var(--muted)',cursor:'pointer'}}>posiciones ↓</span>
+              <button className="group-label-btn" onClick={()=>scrollToStandings(g)}>posiciones ↓</button>
             </div>
-            {isMobile&&expandedGroup===g&&(
-              <div style={{marginBottom:12}}>
-                <GroupStandings matches={matches} selectedGroup={g} onSelectGroup={()=>{}}/>
-              </div>
-            )}
-            {groupedMatches[g].map(match=><MatchCard key={match.id} match={match} pick={picks[match.id]} savePick={savePick} savingPick={savingPick} justSaved={justSaved}/>)}
+            {groupedMatches[g].map(match=><MatchCard key={match.id} match={match} pick={picks[match.id]} savePick={savePick} justSaved={justSaved}/>)}
           </div>
         ))
         :filtered.length===0
           ?<div className="empty-state">No hay partidos en esta fase aún</div>
-          :filtered.map(match=><MatchCard key={match.id} match={match} pick={picks[match.id]} savePick={savePick} savingPick={savingPick} justSaved={justSaved}/>)
+          :filtered.map(match=><MatchCard key={match.id} match={match} pick={picks[match.id]} savePick={savePick} justSaved={justSaved}/>)
       }
     </div>
   );
 }
 
-const MatchCard = React.memo(function MatchCard({match,pick,savePick,justSaved}){
+function MatchCard({match,pick,savePick,justSaved}){
   const locked=isLocked(match.match_time);
   const soon=isClosingSoon(match.match_time);
   const hasPick=pick?.result&&pick?.goals;
@@ -596,7 +596,7 @@ const MatchCard = React.memo(function MatchCard({match,pick,savePick,justSaved})
       </div>
     </div>
   );
-});
+}
 
 function RankingsTab({rankings,userId,loading,onRefresh}){
   if(loading)return<div className="loading"><div className="spinner"/><span>Cargando ranking...</span></div>;
