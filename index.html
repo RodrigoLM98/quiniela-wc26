@@ -343,15 +343,26 @@ function App(){
   const[rankingsLoading,setRankingsLoading]=useState(false);
   const[selectedGroup,setSelectedGroup]=useState('A');
   const[showOnboarding,setShowOnboarding]=useState(false);
+  const[recoveryMode,setRecoveryMode]=useState(()=>{
+    const h=window.location.hash;
+    return h.includes('type=recovery');
+  });
 
   useEffect(()=>{
+    // If we arrived via a recovery link, do NOT auto-login. Show reset form.
+    const isRecovery=window.location.hash.includes('type=recovery');
+    if(isRecovery){
+      setRecoveryMode(true);
+      setLoading(false);
+      return;
+    }
     sb.auth.getSession().then(({data:{session}})=>{
       if(session){setUser(session.user);loadProfile(session.user.id,false);}
       else setLoading(false);
     });
     sb.auth.onAuthStateChange((event,session)=>{
       if(event==='PASSWORD_RECOVERY'){
-        // Let AuthScreen handle the reset form via hash detection
+        setRecoveryMode(true);
         setLoading(false);
         return;
       }
@@ -437,6 +448,7 @@ function App(){
 
   function onGroupChange(g){setSelectedGroup(g);}
 
+  if(recoveryMode)return<ResetPasswordScreen onDone={()=>{setRecoveryMode(false);window.location.hash='';window.location.reload();}}/>;
   if(loading)return<div className="app"><div className="loading"><div className="spinner"/><span>Cargando quiniela...</span></div></div>;
   if(!user||!profile)return<AuthScreen onAuth={handleAuth} authMode={authMode} setAuthMode={setAuthMode} loading={authLoading} error={authError} registerSuccess={registerSuccess}/>;
   if(showOnboarding)return<OnboardingScreen username={profile.username} onDone={()=>setShowOnboarding(false)}/>;
@@ -478,6 +490,34 @@ function App(){
   );
 }
 
+function ResetPasswordScreen({onDone}){
+  const[newPassword,setNewPassword]=useState('');
+  const[confirmPassword,setConfirmPassword]=useState('');
+  const[loading,setLoading]=useState(false);
+  const[msg,setMsg]=useState('');
+  async function handleReset(e){
+    e.preventDefault();
+    if(newPassword!==confirmPassword){setMsg('Las contraseñas no coinciden.');return;}
+    setLoading(true);setMsg('');
+    const{error}=await sb.auth.updateUser({password:newPassword});
+    if(error)setMsg('Error: '+error.message);
+    else{setMsg('✅ ¡Contraseña actualizada! Redirigiendo...');setTimeout(onDone,1800);}
+    setLoading(false);
+  }
+  return(
+    <div className="auth-wrap"><div className="auth-card">
+      <div className="auth-title">NUEVA<br/><span style={{color:'var(--accent2)'}}>CONTRASEÑA</span></div>
+      <p className="auth-sub">Elige una nueva contraseña para tu cuenta.</p>
+      {msg&&<div className={msg.startsWith('✅')?'success-msg':'error-msg'}>{msg}</div>}
+      {!msg.startsWith('✅')&&<form onSubmit={handleReset}>
+        <div className="field"><label>Nueva contraseña</label><input type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder="••••••••" required minLength={6} autoComplete="new-password"/></div>
+        <div className="field"><label>Confirmar contraseña</label><input type="password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} placeholder="••••••••" required minLength={6} autoComplete="new-password"/></div>
+        <button className="btn btn-primary" type="submit" disabled={loading}>{loading?'Guardando...':'Guardar contraseña'}</button>
+      </form>}
+    </div></div>
+  );
+}
+
 function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess}){
   const[email,setEmail]=useState('');
   const[password,setPassword]=useState('');
@@ -487,7 +527,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
   const[forgotMsg,setForgotMsg]=useState('');
   async function handleForgot(e){
     e.preventDefault();setForgotLoading(true);setForgotMsg('');
-    const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.href});
+    const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:'https://www.wc26pool.com'});
     if(error)setForgotMsg('Error: '+error.message);
     else setForgotMsg('✅ Revisa tu correo, te enviamos el link para restablecer tu contraseña.');
     setForgotLoading(false);
