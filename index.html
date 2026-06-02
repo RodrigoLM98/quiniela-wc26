@@ -210,6 +210,21 @@ function calcPoints(pick,match){
   if(pick.goals===ag)pts+=1;
   return pts;
 }
+const PRED_DEFS=[
+  {key:'champion',label:'🏆 Campeón del mundo',pts:20,type:'team'},
+  {key:'finalist',label:'🥈 Finalista (subcampeón)',pts:12,type:'team'},
+  {key:'third_place',label:'🥉 Tercer lugar',pts:8,type:'team'},
+  {key:'surprise_team',label:'🎁 Selección sorpresa',pts:10,type:'team'},
+  {key:'top_scorer',label:'👟 Bota de oro (más goles)',pts:15,type:'player'},
+  {key:'clean_sheets',label:'🧤 Más arcos en cero',pts:12,type:'player'},
+  {key:'assists',label:'🎯 Más asistencias',pts:12,type:'player'},
+];
+function calcPredictionPoints(pred,results){
+  if(!pred||!results)return 0;
+  let pts=0;
+  PRED_DEFS.forEach(d=>{const c=results[d.key];if(c&&pred[d.key]&&pred[d.key]===c)pts+=d.pts;});
+  return pts;
+}
 function calcGroupStandings(group,matches){
   const gm=matches.filter(m=>m.group_name===group&&m.home_team!=='TBD');
   const teams={};
@@ -360,6 +375,8 @@ function App(){
   const[selectedGroup,setSelectedGroup]=useState('A');
   const[showOnboarding,setShowOnboarding]=useState(false);
   const[prediction,setPrediction]=useState(null);
+  const[allPredictions,setAllPredictions]=useState([]);
+  const[predResults,setPredResults]=useState(null);
   const[recoveryMode,setRecoveryMode]=useState(()=>{
     const h=window.location.hash;
     return h.includes('type=recovery');
@@ -403,13 +420,22 @@ function App(){
     await loadMatches();
     await loadMyPicks(uid);
     await loadPrediction(uid);
+    await loadPredResults();
     if(isNew)setShowOnboarding(true);
     setLoading(false);
   }
   async function loadMatches(){const{data}=await sb.from('matches').select('*').order('match_time');if(data&&data.length>0)setMatches(data);}
   async function loadMyPicks(uid){const{data}=await sb.from('picks').select('*').eq('user_id',uid);if(data){const map={};data.forEach(p=>{map[p.match_id]=p;});setPicks(map);}}
-  async function loadRankings(){setRankingsLoading(true);const[{data:ap},{data:pr}]=await Promise.all([sb.from('picks').select('*'),sb.from('profiles').select('*')]);if(ap)setAllPicks(ap);if(pr)setProfiles(pr);setRankingsLoading(false);}
+  async function loadRankings(){setRankingsLoading(true);const[{data:ap},{data:pr},{data:allPred},{data:res}]=await Promise.all([sb.from('picks').select('*'),sb.from('profiles').select('*'),sb.from('predictions').select('*'),sb.from('prediction_results').select('*').eq('id',1).maybeSingle()]);if(ap)setAllPicks(ap);if(pr)setProfiles(pr);if(allPred)setAllPredictions(allPred);if(res)setPredResults(res);setRankingsLoading(false);}
   async function loadPrediction(uid){const{data}=await sb.from('predictions').select('*').eq('user_id',uid).maybeSingle();if(data)setPrediction(data);}
+  async function loadPredResults(){const{data}=await sb.from('prediction_results').select('*').eq('id',1).maybeSingle();if(data)setPredResults(data);}
+  async function savePredResult(field,value){
+    const base=predResults?{...predResults}:{id:1};
+    base.id=1; base[field]=value; base.updated_at=new Date().toISOString();
+    setPredResults(base);
+    const{data}=await sb.from('prediction_results').upsert(base,{onConflict:'id'}).select().maybeSingle();
+    if(data)setPredResults(data);
+  }
   async function savePrediction(field,value){
     if(!user)return;
     const base=prediction?{...prediction}:{user_id:user.id};
@@ -424,8 +450,9 @@ function App(){
     const mm={};matches.forEach(m=>mm[m.id]=m);
     const us={};profiles.forEach(p=>{us[p.id]={profile:p,pts:0,correct:0,total:0};});
     allPicks.forEach(pick=>{const match=mm[pick.match_id];if(!match||match.home_score==null||!us[pick.user_id])return;const pts=calcPoints(pick,match);us[pick.user_id].pts+=pts;if(pts>=3)us[pick.user_id].correct+=1;us[pick.user_id].total+=1;});
+    allPredictions.forEach(pred=>{if(!us[pred.user_id])return;us[pred.user_id].pts+=calcPredictionPoints(pred,predResults);});
     return Object.values(us).sort((a,b)=>b.pts-a.pts);
-  },[matches,allPicks,profiles]);
+  },[matches,allPicks,profiles,allPredictions,predResults]);
 
   const[registerSuccess,setRegisterSuccess]=useState('');
   async function handleAuth(e,email,password,username){
@@ -483,6 +510,7 @@ function App(){
 
   const isAdmin=user.email==='admin@quiniela2026.com'||profile.username==='admin';
   const myPoints=Object.values(picks).reduce((acc,pick)=>{const match=matches.find(m=>m.id===pick.match_id);if(!match||match.home_score==null)return acc;return acc+calcPoints(pick,match);},0);
+  const myPredPoints=calcPredictionPoints(prediction,predResults);
   const octavosTimes=matches.filter(m=>m.stage==='Octavos').map(m=>new Date(m.match_time).getTime());
   const octavosStart=octavosTimes.length?Math.min(...octavosTimes):null;
   const predLocked=octavosStart?Date.now()>=octavosStart:false;
@@ -499,7 +527,7 @@ function App(){
             {isAdmin&&<button className={`nav-btn ${tab==='admin'?'active':''}`} onClick={()=>setTab('admin')}>Admin</button>}
           </nav>
           <div className="user-bar">
-            <div className="user-chip"><span className="points-pill">⚽ {myPoints} pts</span><strong>{profile.username}</strong></div>
+            <div className="user-chip"><span className="points-pill">⚽ {myPoints+myPredPoints} pts</span><strong>{profile.username}</strong></div>
             <button className="logout-btn" onClick={()=>sb.auth.signOut()}>Salir</button>
           </div>
         </div>
@@ -517,7 +545,7 @@ function App(){
         )}
         {tab==='rankings'&&<RankingsTab rankings={getRankings()} userId={user.id} loading={rankingsLoading} onRefresh={loadRankings}/>}
         {tab==='predicciones'&&<PredictionsTab prediction={prediction} savePrediction={savePrediction} locked={predLocked} octavosStart={octavosStart}/>}
-        {tab==='admin'&&isAdmin&&<AdminTab matches={matches} adminScores={adminScores} setAdminScores={setAdminScores} saveAdminScore={saveAdminScore} adminSaving={adminSaving}/>}
+        {tab==='admin'&&isAdmin&&<AdminTab matches={matches} adminScores={adminScores} setAdminScores={setAdminScores} saveAdminScore={saveAdminScore} adminSaving={adminSaving} predResults={predResults} savePredResult={savePredResult}/>}
       </main>
     </div>
   );
@@ -709,12 +737,28 @@ function RankingsTab({rankings,userId,loading,onRefresh}){
   );
 }
 
-function AdminTab({matches,adminScores,setAdminScores,saveAdminScore,adminSaving}){
+function AdminTab({matches,adminScores,setAdminScores,saveAdminScore,adminSaving,predResults,savePredResult}){
   const[filter,setFilter]=useState('Grupos');
   const filtered=matches.filter(m=>m.stage===filter);
   return(
     <div>
-      <div className="section-title">ADMIN — RESULTADOS</div>
+      <div className="section-title">ADMIN — RESULTADO DE PREDICCIONES</div>
+      <p style={{color:'var(--muted)',fontSize:'0.82rem',marginTop:'-0.75rem',marginBottom:'1.25rem'}}>Fija el resultado oficial de cada predicción. Al guardar, los puntos se recalculan automáticamente para todos (acierto exacto = puntos completos).</p>
+      <div className="admin-grid" style={{marginBottom:'2rem'}}>
+        {PRED_DEFS.map(d=>(
+          <div key={d.key} className="admin-card">
+            <div className="admin-card-title">{d.label} · {d.pts} pts</div>
+            {d.type==='team'
+              ? <select className="pred-select" value={(predResults&&predResults[d.key])||''} onChange={e=>savePredResult(d.key,e.target.value)}>
+                  <option value="">— Sin definir —</option>
+                  {ALL_TEAMS.map(t=><option key={t} value={t}>{(FLAGS[t]||'')+' '+t}</option>)}
+                </select>
+              : <PlayerPicker value={(predResults&&predResults[d.key])||''} locked={false} onChange={v=>savePredResult(d.key,v)}/>}
+            {predResults&&predResults[d.key]&&<div className="pred-saved">✓ {predResults[d.key]}</div>}
+          </div>
+        ))}
+      </div>
+      <div className="section-title">ADMIN — RESULTADOS DE PARTIDOS</div>
       <div className="stage-filter" style={{marginBottom:'1.25rem'}}>{STAGES.map(s=><button key={s} className={`stage-btn ${filter===s?'active':''}`} onClick={()=>setFilter(s)}>{s}</button>)}</div>
       <div className="admin-grid">
         {filtered.map(match=>(
