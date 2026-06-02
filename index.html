@@ -175,7 +175,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const FLAGS = {'México':'🇲🇽','Estados Unidos':'🇺🇸','Canadá':'🇨🇦','Argentina':'🇦🇷','Brasil':'🇧🇷','Francia':'🇫🇷','Alemania':'🇩🇪','España':'🇪🇸','Inglaterra':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','Portugal':'🇵🇹','Uruguay':'🇺🇾','Colombia':'🇨🇴','Ecuador':'🇪🇨','Marruecos':'🇲🇦','Senegal':'🇸🇳','Japón':'🇯🇵','Corea del Sur':'🇰🇷','Arabia Saudita':'🇸🇦','Australia':'🇦🇺','Países Bajos':'🇳🇱','Bélgica':'🇧🇪','Croacia':'🇭🇷','Suiza':'🇨🇭','Dinamarca':'🇩🇰','Turquía':'🇹🇷','Escocia':'🏴󠁧󠁢󠁳󠁣󠁴󠁿','Panamá':'🇵🇦','Venezuela':'🇻🇪','Paraguay':'🇵🇾','Qatar':'🇶🇦','Argelia':'🇩🇿','Egipto':'🇪🇬','Sudáfrica':'🇿🇦','Costa de Marfil':'🇨🇮','Haití':'🇭🇹','Noruega':'🇳🇴','Iraq':'🇮🇶','Austria':'🇦🇹','Jordania':'🇯🇴','Uzbekistán':'🇺🇿','DR Congo':'🇨🇩','Chequia':'🇨🇿','Bosnia':'🇧🇦','Curazao':'🇨🇼','Túnez':'🇹🇳','Suecia':'🇸🇪','Nueva Zelanda':'🇳🇿','Cabo Verde':'🇨🇻','Ghana':'🇬🇭','Serbia':'🇷🇸','Irán':'🇮🇷','Nigeria':'🇳🇬','Chile':'🇨🇱','Polonia':'🇵🇱','TBD':'🏳️'};
-const STAGES = ['Grupos','Octavos','Cuartos','Semis','Final'];
+const STAGES = ['Grupos','32avos','Octavos','Cuartos','Semis','Final'];
 const ALL_GROUPS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
 
 function isLocked(mt){return new Date()>=new Date(new Date(mt).getTime()-60*60*1000);}
@@ -383,15 +383,20 @@ function App(){
     return Object.values(us).sort((a,b)=>b.pts-a.pts);
   },[matches,allPicks,profiles]);
 
+  const[registerSuccess,setRegisterSuccess]=useState('');
   async function handleAuth(e,email,password,username){
-    e.preventDefault();setAuthLoading(true);setAuthError('');
+    e.preventDefault();setAuthLoading(true);setAuthError('');setRegisterSuccess('');
     if(authMode==='login'){
       const{error}=await sb.auth.signInWithPassword({email,password});
       if(error)setAuthError(error.message);
     }else{
       const{data,error}=await sb.auth.signUp({email,password});
       if(error){setAuthError(error.message);setAuthLoading(false);return;}
-      if(data.user){await sb.from('profiles').insert({id:data.user.id,username});setShowOnboarding(true);}
+      if(data.user&&data.user.identities&&data.user.identities.length>0){
+        await sb.from('profiles').insert({id:data.user.id,username});
+        if(data.session){setShowOnboarding(true);}
+        else{setRegisterSuccess('¡Cuenta creada! Revisa tu correo (incluyendo spam) para confirmar tu cuenta antes de entrar.');}
+      }
     }
     setAuthLoading(false);
   }
@@ -428,7 +433,7 @@ function App(){
   function onGroupChange(g){setSelectedGroup(g);}
 
   if(loading)return<div className="app"><div className="loading"><div className="spinner"/><span>Cargando quiniela...</span></div></div>;
-  if(!user||!profile)return<AuthScreen onAuth={handleAuth} authMode={authMode} setAuthMode={setAuthMode} loading={authLoading} error={authError}/>;
+  if(!user||!profile)return<AuthScreen onAuth={handleAuth} authMode={authMode} setAuthMode={setAuthMode} loading={authLoading} error={authError} registerSuccess={registerSuccess}/>;
   if(showOnboarding)return<OnboardingScreen username={profile.username} onDone={()=>setShowOnboarding(false)}/>;
 
   const isAdmin=user.email==='admin@quiniela2026.com'||profile.username==='admin';
@@ -468,7 +473,7 @@ function App(){
   );
 }
 
-function AuthScreen({onAuth,authMode,setAuthMode,loading,error}){
+function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess}){
   const[email,setEmail]=useState('');
   const[password,setPassword]=useState('');
   const[username,setUsername]=useState('');
@@ -501,6 +506,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error}){
       <div className="auth-title">QUINIELA<br/>WC <span style={{color:'var(--accent2)'}}>2026</span></div>
       <p className="auth-sub">{authMode==='login'?'Inicia sesión para participar':'Crea tu cuenta y participa'}</p>
       {error&&<div className="error-msg">{error}</div>}
+      {registerSuccess&&<div className="success-msg">{registerSuccess}</div>}
       <form onSubmit={e=>onAuth(e,email,password,username)}>
         {authMode==='register'&&(<div className="field"><label>Nombre en la quiniela</label><input value={username} onChange={e=>setUsername(e.target.value)} placeholder="ej. ElChavo" autoComplete="username" required/></div>)}
         <div className="field"><label>Correo electrónico</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tu@correo.com" autoComplete="email" required/></div>
