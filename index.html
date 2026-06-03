@@ -178,12 +178,33 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .player-picker .pred-select{flex:1;min-width:0;}
 @media(max-width:600px){.player-picker{flex-direction:column;}}
 .pred-saved{font-size:0.72rem;color:var(--green);margin-top:6px;}
+.group-badge{background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.25);border-radius:20px;padding:4px 12px;font-size:0.73rem;font-weight:600;color:var(--accent2);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:middle;}
+.account-btn{display:flex;align-items:center;gap:4px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 8px 3px 4px;cursor:pointer;transition:border-color 0.15s;}
+.account-btn:hover{border-color:var(--accent);}
+.account-avatar{width:26px;height:26px;border-radius:50%;color:#0a0e1a;font-weight:700;font-size:0.68rem;display:flex;align-items:center;justify-content:center;}
+.account-caret{color:var(--muted);font-size:0.7rem;}
+.account-menu{position:absolute;right:0;top:calc(100% + 8px);background:var(--surface);border:1px solid var(--border);border-radius:12px;min-width:215px;padding:6px;z-index:201;box-shadow:0 12px 32px rgba(0,0,0,0.5);}
+.account-menu-head{font-size:0.82rem;color:var(--text);font-weight:700;padding:8px 12px 8px;border-bottom:1px solid var(--border);margin-bottom:4px;}
+.account-menu-item{display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.85rem;padding:10px 12px;border-radius:8px;cursor:pointer;transition:background 0.15s;}
+.account-menu-item:hover{background:var(--surface2);}
+.account-menu-item.danger{color:var(--red);}
+.account-menu-item.danger:hover{background:rgba(255,71,87,0.12);}
+@media(max-width:600px){
+  .header{padding:0 1rem;}
+  .header-inner{flex-wrap:wrap;height:auto;padding:10px 0;gap:8px;}
+  .logo{order:1;font-size:1.3rem;line-height:1;white-space:nowrap;}
+  .user-bar{order:2;margin-left:auto;}
+  .nav{order:3;width:100%;overflow-x:auto;flex-wrap:nowrap;gap:4px;padding-bottom:2px;-webkit-overflow-scrolling:touch;}
+  .nav::-webkit-scrollbar{display:none;}
+  .nav-btn{flex:0 0 auto;white-space:nowrap;padding:7px 14px;}
+}
+@media(max-width:600px){.group-badge{display:none;}}
 </style>
 </head>
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect, useCallback } = React;
+const { useState, useEffect, useCallback, useRef } = React;
 const SUPABASE_URL = 'https://uoevtnrezmbujdlkqvkc.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVvZXZ0bnJlem1idWpkbGtxdmtjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNDkzMjUsImV4cCI6MjA5NTkyNTMyNX0.FwG3d8Dh4TeFUEWnkqv7KGUuXF7McDoHU3HFZJclI2c';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -198,8 +219,8 @@ function isLocked(mt){return new Date()>=new Date(new Date(mt).getTime()-60*60*1
 function getTimeUntilLock(mt){return new Date(new Date(mt).getTime()-60*60*1000)-new Date();}
 function isClosingSoon(mt){const d=getTimeUntilLock(mt);return d>0&&d<6*60*60*1000;}
 function formatMatchTime(mt){const d=new Date(mt);return d.toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'})+' · '+d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});}
-function getAvatarColor(name){const c=['#e8ff47','#00d4ff','#ff6b9d','#7c3aed','#f59e0b','#10b981'];let h=0;for(let x of name)h=(h*31+x.charCodeAt(0))%c.length;return c[h];}
-function getInitials(name){return name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
+function getAvatarColor(name){const s=name||'?';const c=['#e8ff47','#00d4ff','#ff6b9d','#7c3aed','#f59e0b','#10b981'];let h=0;for(let x of s)h=(h*31+x.charCodeAt(0))%c.length;return c[h];}
+function getInitials(name){return (name||'?').split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2)||'?';}
 function calcPoints(pick,match){
   if(match.home_score==null||match.away_score==null)return 0;
   let pts=0;
@@ -377,32 +398,34 @@ function App(){
   const[prediction,setPrediction]=useState(null);
   const[allPredictions,setAllPredictions]=useState([]);
   const[predResults,setPredResults]=useState(null);
+  const[currentGroup,setCurrentGroup]=useState(null);
+  const[myGroups,setMyGroups]=useState([]);
+  const[groupMembers,setGroupMembers]=useState([]);
+  const[paymentProcessing,setPaymentProcessing]=useState(false);
+  const[paymentError,setPaymentError]=useState('');
   const[recoveryMode,setRecoveryMode]=useState(()=>{
     const h=window.location.hash;
     return h.includes('type=recovery');
   });
 
+  const loadedRef=useRef(null);
   useEffect(()=>{
-    // If we arrived via a recovery link, do NOT auto-login. Show reset form.
     const isRecovery=window.location.hash.includes('type=recovery');
-    if(isRecovery){
-      setRecoveryMode(true);
-      setLoading(false);
-      return;
-    }
-    sb.auth.getSession().then(({data:{session}})=>{
-      if(session){setUser(session.user);loadProfile(session.user.id,false);}
-      else setLoading(false);
-    });
-    sb.auth.onAuthStateChange((event,session)=>{
-      if(event==='PASSWORD_RECOVERY'){
-        setRecoveryMode(true);
-        setLoading(false);
-        return;
+    if(isRecovery){setRecoveryMode(true);setLoading(false);return;}
+    // Una sola vía de carga: onAuthStateChange dispara INITIAL_SESSION al montar
+    // (con la sesión restaurada o null), evitando la doble carga que causaba conflictos.
+    const{data:{subscription}}=sb.auth.onAuthStateChange((event,session)=>{
+      if(event==='PASSWORD_RECOVERY'){setRecoveryMode(true);setLoading(false);return;}
+      if(session&&session.user){
+        if(loadedRef.current===session.user.id)return;
+        loadedRef.current=session.user.id;
+        setUser(session.user);loadProfile(session.user.id,false);
+      }else{
+        loadedRef.current=null;
+        setUser(null);setProfile(null);setCurrentGroup(null);setGroupMembers([]);setMyGroups([]);setLoading(false);
       }
-      if(session){setUser(session.user);loadProfile(session.user.id,false);}
-      else{setUser(null);setProfile(null);setLoading(false);}
     });
+    return()=>subscription&&subscription.unsubscribe();
   },[]);
 
   useEffect(()=>{
@@ -414,21 +437,79 @@ function App(){
     return()=>sb.removeChannel(sub);
   },[user]);
 
+  useEffect(()=>{
+    if(!user)return;
+    const params=new URLSearchParams(window.location.search);
+    const status=params.get('payment');
+    const sessionId=params.get('session_id');
+    if(status==='success'&&sessionId){
+      const pending=JSON.parse(localStorage.getItem('wc26_pending_group')||'{}');
+      processPayment(sessionId,pending.groupName||'');
+    }else if(status==='cancelled'){
+      localStorage.removeItem('wc26_pending_group');
+      window.history.replaceState({},'',window.location.pathname);
+    }
+  },[user]);
+
   async function loadProfile(uid,isNew){
-    const{data}=await sb.from('profiles').select('*').eq('id',uid).single();
-    setProfile(data);
-    await loadMatches();
-    await loadMyPicks(uid);
-    await loadPrediction(uid);
-    await loadPredResults();
-    if(isNew)setShowOnboarding(true);
-    setLoading(false);
+    try{
+      const sel=await sb.from('profiles').select('*').eq('id',uid).limit(1);
+      if(sel.error)throw sel.error;
+      let data=sel.data&&sel.data[0];
+      if(!data){
+        const{data:au}=await sb.auth.getUser();
+        const uname=(au&&au.user&&au.user.user_metadata&&au.user.user_metadata.username)||(au&&au.user&&au.user.email?au.user.email.split('@')[0]:'Jugador');
+        const{error:upErr}=await sb.from('profiles').upsert({id:uid,username:uname},{onConflict:'id'});
+        if(upErr)throw upErr;
+        const r=await sb.from('profiles').select('*').eq('id',uid).limit(1);
+        data=r.data&&r.data[0];
+      }
+      if(!data){setAuthError('No se pudo crear tu perfil (revisa las políticas de la tabla profiles).');setLoading(false);return;}
+      setProfile(data);
+      await loadMatches();
+      await loadMyPicks(uid);
+      await loadPrediction(uid);
+      await loadPredResults();
+      const groups=await loadMyGroups(uid);
+      if(groups.length===1){await loadGroupMembers(groups[0].id);setCurrentGroup(groups[0]);}
+      if(isNew)setShowOnboarding(true);
+      setLoading(false);
+    }catch(e){
+      setAuthError('Error al cargar tu perfil: '+(e.message||e));
+      setLoading(false);
+    }
   }
   async function loadMatches(){const{data}=await sb.from('matches').select('*').order('match_time');if(data&&data.length>0)setMatches(data);}
   async function loadMyPicks(uid){const{data}=await sb.from('picks').select('*').eq('user_id',uid);if(data){const map={};data.forEach(p=>{map[p.match_id]=p;});setPicks(map);}}
   async function loadRankings(){setRankingsLoading(true);const[{data:ap},{data:pr},{data:allPred},{data:res}]=await Promise.all([sb.from('picks').select('*'),sb.from('profiles').select('*'),sb.from('predictions').select('*'),sb.from('prediction_results').select('*').eq('id',1).maybeSingle()]);if(ap)setAllPicks(ap);if(pr)setProfiles(pr);if(allPred)setAllPredictions(allPred);if(res)setPredResults(res);setRankingsLoading(false);}
   async function loadPrediction(uid){const{data}=await sb.from('predictions').select('*').eq('user_id',uid).maybeSingle();if(data)setPrediction(data);}
   async function loadPredResults(){const{data}=await sb.from('prediction_results').select('*').eq('id',1).maybeSingle();if(data)setPredResults(data);}
+  async function loadMyGroups(uid){
+    const{data}=await sb.from('group_members').select('group_id, groups(id,name,invite_code,owner_id)').eq('user_id',uid);
+    const groups=(data||[]).map(d=>d.groups).filter(Boolean);
+    setMyGroups(groups); return groups;
+  }
+  async function loadGroupMembers(groupId){
+    const{data}=await sb.from('group_members').select('user_id').eq('group_id',groupId);
+    setGroupMembers((data||[]).map(d=>d.user_id));
+  }
+  async function processPayment(sessionId,groupName){
+    setPaymentProcessing(true);setPaymentError('');
+    try{
+      const res=await fetch('/api/verify-payment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,userId:user.id,groupName})});
+      const{group,error:apiErr}=await res.json();
+      if(apiErr)throw new Error(apiErr);
+      localStorage.removeItem('wc26_pending_group');
+      window.history.replaceState({},'',window.location.pathname);
+      const groups=await loadMyGroups(user.id);
+      const newGroup=groups.find(g=>g.id===group.id)||group;
+      await loadGroupMembers(newGroup.id);
+      setCurrentGroup(newGroup);
+    }catch(e){
+      setPaymentError(e.message||'Error al procesar el pago. Intenta de nuevo o contáctanos.');
+    }
+    setPaymentProcessing(false);
+  }
   async function savePredResult(field,value){
     const base=predResults?{...predResults}:{id:1};
     base.id=1; base[field]=value; base.updated_at=new Date().toISOString();
@@ -448,46 +529,76 @@ function App(){
 
   const getRankings=useCallback(()=>{
     const mm={};matches.forEach(m=>mm[m.id]=m);
-    const us={};profiles.forEach(p=>{us[p.id]={profile:p,pts:0,correct:0,total:0};});
+    const us={};profiles.filter(p=>groupMembers.length===0||groupMembers.includes(p.id)).forEach(p=>{us[p.id]={profile:p,pts:0,correct:0,total:0};});
     allPicks.forEach(pick=>{const match=mm[pick.match_id];if(!match||match.home_score==null||!us[pick.user_id])return;const pts=calcPoints(pick,match);us[pick.user_id].pts+=pts;if(pts>=3)us[pick.user_id].correct+=1;us[pick.user_id].total+=1;});
     allPredictions.forEach(pred=>{if(!us[pred.user_id])return;us[pred.user_id].pts+=calcPredictionPoints(pred,predResults);});
     return Object.values(us).sort((a,b)=>b.pts-a.pts);
-  },[matches,allPicks,profiles,allPredictions,predResults]);
+  },[matches,allPicks,profiles,allPredictions,predResults,groupMembers]);
 
   const[registerSuccess,setRegisterSuccess]=useState('');
   async function handleAuth(e,email,password,username){
     e.preventDefault();setAuthLoading(true);setAuthError('');setRegisterSuccess('');
     if(authMode==='login'){
       const{error}=await sb.auth.signInWithPassword({email,password});
-      if(error)setAuthError(error.message);
+      if(error){
+        if(error.message.toLowerCase().includes('invalid')||error.message.toLowerCase().includes('credentials')){
+          setAuthError('Correo o contraseña incorrectos. Verifica tus datos o usa ¿Olvidaste tu contraseña?');
+        } else if(error.message.toLowerCase().includes('confirm')){
+          setAuthError('Debes confirmar tu correo antes de entrar. Revisa tu bandeja (incluye spam).');
+        } else {
+          setAuthError(error.message);
+        }
+      }
     }else{
-      const{data,error}=await sb.auth.signUp({email,password});
-      if(error){setAuthError(error.message);setAuthLoading(false);return;}
-      if(data.user&&data.user.identities&&data.user.identities.length>0){
-        await sb.from('profiles').insert({id:data.user.id,username});
-        if(data.session){setShowOnboarding(true);}
-        else{setRegisterSuccess('¡Cuenta creada! Revisa tu correo (incluyendo spam) para confirmar tu cuenta antes de entrar.');}
+      const{data,error}=await sb.auth.signUp({email,password,options:{data:{username}}});
+      if(error){
+        if(error.message.toLowerCase().includes('already')||error.message.toLowerCase().includes('registered')){
+          setAuthError('Este correo ya está registrado. Inicia sesión o usa ¿Olvidaste tu contraseña?');
+        }else{
+          setAuthError(error.message);
+        }
+        setAuthLoading(false);return;
+      }
+      if(data.user&&data.user.identities&&data.user.identities.length===0){
+        setAuthError('Este correo ya está registrado. Inicia sesión o usa ¿Olvidaste tu contraseña?');setAuthLoading(false);return;
+      }
+      // Con la confirmación de correo desactivada, signUp suele devolver sesión.
+      if(data.session){
+        setShowOnboarding(true);
+      }else{
+        // Algunos proyectos no devuelven sesión en signUp aunque la confirmación esté desactivada.
+        // Intentamos iniciar sesión directo; si la confirmación SÍ está activada, fallará y mostramos el aviso.
+        const{error:siErr}=await sb.auth.signInWithPassword({email,password});
+        if(siErr){
+          setRegisterSuccess('¡Cuenta creada! Revisa tu correo (incluyendo spam) para confirmar tu cuenta antes de entrar.');
+        }else{
+          setShowOnboarding(true);
+        }
       }
     }
     setAuthLoading(false);
   }
 
+  const picksRef=useRef({});
+  useEffect(()=>{picksRef.current=picks;},[picks]);
   const savePick=useCallback(async function(matchId,field,value){
     if(!user)return;
-    const existing=picks[matchId]||{};
+    const existing=picksRef.current[matchId]||{};
     const optimistic={...existing,user_id:user.id,match_id:matchId,[field]:value,updated_at:new Date().toISOString()};
     setPicks(prev=>({...prev,[matchId]:optimistic}));
     setJustSaved(`${matchId}-${field}`);
     setTimeout(()=>setJustSaved(null),1500);
-    const{data,error}=await sb.from('picks').upsert(optimistic,{onConflict:'user_id,match_id'}).select().single();
+    const payload={...existing,user_id:user.id,match_id:matchId,[field]:value};
+    const{data,error}=await sb.from('picks').upsert(payload,{onConflict:'user_id,match_id'}).select().single();
     if(error){setPicks(prev=>({...prev,[matchId]:existing}));}
     else if(data){setPicks(prev=>({...prev,[matchId]:data}));}
-  },[user,picks]);
+  },[user]);
 
   async function saveAdminScore(matchId){
-    const s=adminScores[matchId];if(!s||s.home==null||s.away==null)return;
+    const s=adminScores[matchId];if(!s)return;
+    const hs=parseInt(s.home,10),as=parseInt(s.away,10);
+    if(!Number.isFinite(hs)||!Number.isFinite(as)||hs<0||as<0){alert('Ingresa marcadores válidos (números mayores o iguales a 0).');return;}
     setAdminSaving(matchId);
-    const hs=parseInt(s.home),as=parseInt(s.away);
     await sb.from('matches').update({home_score:hs,away_score:as,status:'finished'}).eq('id',matchId);
     setMatches(prev=>prev.map(m=>m.id===matchId?{...m,home_score:hs,away_score:as,status:'finished'}:m));
     setAdminSaving(null);
@@ -503,12 +614,50 @@ function App(){
 
   function onGroupChange(g){setSelectedGroup(g);}
 
+  const[menuOpen,setMenuOpen]=useState(false);
+  function copyInviteCode(){
+    if(!currentGroup)return;
+    const msg=`Código de invitación de "${currentGroup.name}":\n\n${currentGroup.invite_code}\n\nComparte este código para que tus amigos se unan gratis a tu quiniela en www.wc26pool.com`;
+    if(navigator.clipboard){navigator.clipboard.writeText(currentGroup.invite_code).then(()=>alert(msg+'\n\n(Código copiado al portapapeles)')).catch(()=>alert(msg));}
+    else{alert(msg);}
+  }
+  async function deleteAccount(){
+    setMenuOpen(false);
+    const ownsGroup=myGroups.some(g=>g.owner_id===user.id);
+    const warn=ownsGroup
+      ?'Vas a ELIMINAR tu cuenta. Como creaste uno o más grupos, esos grupos y sus rankings se borrarán para todos sus miembros. Esta acción NO se puede deshacer.\n\n¿Continuar?'
+      :'Vas a ELIMINAR tu cuenta y todos tus datos (picks y predicciones). Esta acción NO se puede deshacer.\n\n¿Continuar?';
+    if(!window.confirm(warn))return;
+    try{
+      const{data:{session}}=await sb.auth.getSession();
+      const res=await fetch('/api/delete-account',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken:session&&session.access_token})});
+      const j=await res.json();
+      if(j.error)throw new Error(j.error);
+      alert('Tu cuenta fue eliminada. ¡Gracias por participar!');
+      await sb.auth.signOut();
+      window.location.reload();
+    }catch(e){
+      alert('No se pudo eliminar la cuenta: '+e.message);
+    }
+  }
+
   if(recoveryMode)return<ResetPasswordScreen onDone={()=>{setRecoveryMode(false);window.location.hash='';window.location.reload();}}/>;
   if(loading)return<div className="app"><div className="loading"><div className="spinner"/><span>Cargando quiniela...</span></div></div>;
   if(!user||!profile)return<AuthScreen onAuth={handleAuth} authMode={authMode} setAuthMode={setAuthMode} loading={authLoading} error={authError} registerSuccess={registerSuccess}/>;
   if(showOnboarding)return<OnboardingScreen username={profile.username} onDone={()=>setShowOnboarding(false)}/>;
 
   const isAdmin=user.email==='admin@quiniela2026.com'||profile.username==='admin';
+  if(paymentProcessing||paymentError)return(
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)',padding:'1.5rem'}}>
+      <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:'2.5rem',width:'100%',maxWidth:400,textAlign:'center'}}>
+        {paymentProcessing
+          ?<><div className='spinner' style={{margin:'0 auto 1.5rem'}}/><div style={{fontFamily:'Bebas Neue,sans-serif',fontSize:'1.5rem',letterSpacing:2,marginBottom:8}}>PROCESANDO PAGO</div><p style={{color:'var(--muted)',fontSize:'0.9rem'}}>Verificando con Stripe, no cierres esta ventana...</p></>
+          :<><div style={{fontSize:'3rem',marginBottom:16}}>⚠️</div><div style={{fontFamily:'Bebas Neue,sans-serif',fontSize:'1.5rem',letterSpacing:2,marginBottom:8}}>ERROR EN EL PAGO</div><p style={{color:'var(--muted)',fontSize:'0.9rem',marginBottom:'1.5rem'}}>{paymentError}</p><button onClick={()=>setPaymentError('')} className='btn btn-primary'>Volver</button></>
+        }
+      </div>
+    </div>
+  );
+  if(!currentGroup&&!isAdmin)return<GroupSelectionScreen user={user} profile={profile} myGroups={myGroups} onGroupSelected={async(g)=>{await loadGroupMembers(g.id);setCurrentGroup(g);}}/>;
   const myPoints=Object.values(picks).reduce((acc,pick)=>{const match=matches.find(m=>m.id===pick.match_id);if(!match||match.home_score==null)return acc;return acc+calcPoints(pick,match);},0);
   const myPredPoints=calcPredictionPoints(prediction,predResults);
   const octavosTimes=matches.filter(m=>m.stage==='Octavos').map(m=>new Date(m.match_time).getTime());
@@ -527,8 +676,24 @@ function App(){
             {isAdmin&&<button className={`nav-btn ${tab==='admin'?'active':''}`} onClick={()=>setTab('admin')}>Admin</button>}
           </nav>
           <div className="user-bar">
-            <div className="user-chip"><span className="points-pill">⚽ {myPoints+myPredPoints} pts</span><strong>{profile.username}</strong></div>
-            <button className="logout-btn" onClick={()=>sb.auth.signOut()}>Salir</button>
+            {currentGroup&&<span className="group-badge" title={currentGroup.name}>{currentGroup.name}</span>}
+            <span className="points-pill">⚽ {myPoints+myPredPoints} pts</span>
+            <div style={{position:'relative'}}>
+              <button className="account-btn" onClick={()=>setMenuOpen(o=>!o)}>
+                <span className="account-avatar" style={{background:getAvatarColor(profile.username)}}>{getInitials(profile.username)}</span>
+                <span className="account-caret">▾</span>
+              </button>
+              {menuOpen&&<>
+                <div onClick={()=>setMenuOpen(false)} style={{position:'fixed',inset:0,zIndex:200}}/>
+                <div className="account-menu">
+                  <div className="account-menu-head">{profile.username}{currentGroup&&<div style={{fontSize:'0.7rem',color:'var(--accent2)',fontWeight:600,marginTop:2}}>{currentGroup.name}</div>}</div>
+                  {currentGroup&&user.id===currentGroup.owner_id&&<button className="account-menu-item" onClick={()=>{copyInviteCode();setMenuOpen(false);}}>📋 Copiar código del grupo</button>}
+                  <button className="account-menu-item" onClick={()=>{setCurrentGroup(null);setGroupMembers([]);setMenuOpen(false);}}>🔄 Mis grupos / unirme a otro</button>
+                  <button className="account-menu-item" onClick={()=>{setMenuOpen(false);sb.auth.signOut();}}>↩️ Cerrar sesión</button>
+                  <button className="account-menu-item danger" onClick={deleteAccount}>🗑️ Eliminar mi cuenta</button>
+                </div>
+              </>}
+            </div>
           </div>
         </div>
       </header>
@@ -543,10 +708,107 @@ function App(){
             )}
           </div>
         )}
-        {tab==='rankings'&&<RankingsTab rankings={getRankings()} userId={user.id} loading={rankingsLoading} onRefresh={loadRankings}/>}
+        {tab==='rankings'&&<RankingsTab rankings={getRankings()} userId={user.id} loading={rankingsLoading} onRefresh={loadRankings} groupName={currentGroup?currentGroup.name:'Global'}/>}
         {tab==='predicciones'&&<PredictionsTab prediction={prediction} savePrediction={savePrediction} locked={predLocked} octavosStart={octavosStart}/>}
         {tab==='admin'&&isAdmin&&<AdminTab matches={matches} adminScores={adminScores} setAdminScores={setAdminScores} saveAdminScore={saveAdminScore} adminSaving={adminSaving} predResults={predResults} savePredResult={savePredResult}/>}
       </main>
+    </div>
+  );
+}
+
+function GroupSelectionScreen({user,profile,myGroups,onGroupSelected}){
+  const[mode,setMode]=useState('select');
+  const[groupName,setGroupName]=useState('');
+  const[inviteCode,setInviteCode]=useState('');
+  const[promoCode,setPromoCode]=useState('');
+  const[loading,setLoading]=useState(false);
+  const[error,setError]=useState('');
+  async function handleCreate(){
+    if(!groupName.trim())return;
+    setLoading(true);setError('');
+    try{
+      // Con código promocional: el servidor valida el código secreto y crea el grupo gratis.
+      if(promoCode.trim()){
+        const fr=await fetch('/api/create-free-group',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({groupName:groupName.trim(),userId:user.id,promoCode:promoCode.trim()})});
+        const{group,error:freeErr}=await fr.json();
+        if(freeErr)throw new Error(freeErr);
+        onGroupSelected(group);
+        return;
+      }
+      localStorage.setItem('wc26_pending_group',JSON.stringify({groupName:groupName.trim(),userId:user.id}));
+      const res=await fetch('/api/create-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({groupName:groupName.trim(),userId:user.id})});
+      const{url,error:apiErr}=await res.json();
+      if(apiErr)throw new Error(apiErr);
+      window.location.href=url;
+    }catch(e){setError(e.message||'Error de conexión. Intenta de nuevo.');setLoading(false);}
+  }
+  async function handleJoin(){
+    if(!inviteCode.trim())return;
+    setLoading(true);setError('');
+    const code=inviteCode.toUpperCase().trim();
+    const{data:group}=await sb.from('groups').select('*').eq('invite_code',code).eq('status','active').maybeSingle();
+    if(!group){setError('Código inválido. Verifica con el administrador del grupo.');setLoading(false);return;}
+    const{data:existing}=await sb.from('group_members').select('*').eq('group_id',group.id).eq('user_id',user.id).maybeSingle();
+    if(!existing){
+      const{error:joinErr}=await sb.from('group_members').insert({group_id:group.id,user_id:user.id});
+      if(joinErr){setError(joinErr.message);setLoading(false);return;}
+    }
+    onGroupSelected(group);
+  }
+  const btnBase={flex:1,padding:12,borderRadius:8,border:'1px solid var(--border)',background:'var(--surface2)',color:'var(--text)',fontFamily:'DM Sans,sans-serif',fontSize:'0.95rem',fontWeight:600,cursor:'pointer'};
+  return(
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)',padding:'1.5rem'}}>
+      <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:'2.5rem',width:'100%',maxWidth:440}}>
+        <div style={{fontFamily:'Bebas Neue,sans-serif',fontSize:'2rem',letterSpacing:3,marginBottom:4}}>QUINIELA <span style={{color:'var(--accent2)'}}>WC26</span></div>
+        <p style={{color:'var(--muted)',fontSize:'0.9rem',marginBottom:'1.75rem'}}>Hola, <strong style={{color:'var(--text)'}}>{profile.username}</strong>. ¿A qué grupo entras?</p>
+        {error&&<div className='error-msg'>{error}</div>}
+        {mode==='select'&&<>
+          {myGroups.length>0&&<div style={{marginBottom:'1.25rem'}}>
+            {myGroups.map(g=>(
+              <button key={g.id} onClick={()=>onGroupSelected(g)}
+                style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:10,padding:'14px 16px',marginBottom:8,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between',color:'var(--text)',fontFamily:'DM Sans,sans-serif',transition:'all 0.15s'}}
+                onMouseOver={e=>{e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.background='rgba(232,255,71,0.04)';}}
+                onMouseOut={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.background='var(--surface2)';}}>
+                <span style={{fontWeight:600,fontSize:'0.95rem'}}>{g.name}</span>
+                <span style={{color:'var(--accent)',fontWeight:700,fontSize:'0.85rem'}}>Entrar →</span>
+              </button>
+            ))}
+          </div>}
+          <div style={{display:'flex',gap:8}}>
+            <button className='btn btn-primary' style={{flex:1}} onClick={()=>setMode('create')}>+ Crear grupo</button>
+            <button style={btnBase} onClick={()=>setMode('join')}>Unirme</button>
+          </div>
+        </>}
+        {mode==='create'&&<>
+          <div className='field'><label>Nombre del grupo</label>
+            <input value={groupName} onChange={e=>setGroupName(e.target.value)} placeholder='ej. Los Compas del Trabajo' maxLength={50} onKeyDown={e=>e.key==='Enter'&&handleCreate()}/>
+          </div>
+          <div className='field'><label>Código promocional (opcional)</label>
+            <input value={promoCode} onChange={e=>setPromoCode(e.target.value)} placeholder='Déjalo vacío si vas a pagar' maxLength={40} onKeyDown={e=>e.key==='Enter'&&handleCreate()}/>
+          </div>
+          <div style={{background:promoCode.trim()?'rgba(16,185,129,0.07)':'rgba(232,255,71,0.05)',border:'1px solid '+(promoCode.trim()?'rgba(16,185,129,0.25)':'rgba(232,255,71,0.15)'),borderRadius:8,padding:'10px 14px',fontSize:'0.82rem',marginBottom:'1rem',lineHeight:1.5}}>
+            {promoCode.trim()
+              ?<>🎟️ Con un código promocional válido, tu grupo se crea <strong>gratis</strong> (sin pago).</>
+              :<>💳 Pago único de <strong>$149 MXN</strong>. Tus amigos se unen gratis con el código que se genera.</>}
+          </div>
+          <button className='btn btn-primary' disabled={loading||!groupName.trim()} onClick={handleCreate}>
+            {loading?(promoCode.trim()?'Creando grupo...':'Redirigiendo a pago...'):(promoCode.trim()?'Crear grupo gratis →':'Pagar $149 MXN y crear grupo →')}
+          </button>
+          <p className='auth-toggle'><a onClick={()=>{setMode('select');setError('');setPromoCode('');}}>← Volver</a></p>
+        </>}
+        {mode==='join'&&<>
+          <div className='field'><label>Código de invitación</label>
+            <input value={inviteCode} onChange={e=>setInviteCode(e.target.value.toUpperCase())} placeholder='ej. ABC12345' maxLength={10} style={{letterSpacing:2,textTransform:'uppercase'}} onKeyDown={e=>e.key==='Enter'&&handleJoin()}/>
+          </div>
+          <button className='btn btn-primary' disabled={loading||!inviteCode.trim()} onClick={handleJoin}>
+            {loading?'Verificando...':'Unirme al grupo'}
+          </button>
+          <p className='auth-toggle'><a onClick={()=>{setMode('select');setError('');}}>← Volver</a></p>
+        </>}
+        <button onClick={()=>sb.auth.signOut()} style={{display:'block',width:'100%',marginTop:'1.5rem',padding:6,borderRadius:6,border:'none',background:'none',color:'var(--muted)',fontFamily:'DM Sans,sans-serif',fontSize:'0.72rem',cursor:'pointer',opacity:0.7}}>
+          Cerrar sesión ({profile.username})
+        </button>
+      </div>
     </div>
   );
 }
@@ -586,6 +848,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
   const[forgotMode,setForgotMode]=useState(false);
   const[forgotLoading,setForgotLoading]=useState(false);
   const[forgotMsg,setForgotMsg]=useState('');
+  const[showPwd,setShowPwd]=useState(false);
   async function handleForgot(e){
     e.preventDefault();setForgotLoading(true);setForgotMsg('');
     const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:'https://www.wc26pool.com'});
@@ -621,18 +884,22 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
             <span>Contraseña</span>
             {authMode==='login'&&<span onClick={()=>setForgotMode(true)} style={{fontSize:'0.72rem',color:'var(--accent)',cursor:'pointer',fontWeight:600,textTransform:'none',letterSpacing:0}}>¿Olvidaste tu contraseña?</span>}
           </label>
-          <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" autoComplete={authMode==="register"?"new-password":"current-password"} required minLength={6}/>
+          <div style={{position:'relative'}}>
+          <input type={showPwd?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" autoComplete={authMode==="register"?"new-password":"current-password"} required minLength={6} style={{paddingRight:40,width:'100%',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontFamily:'DM Sans,sans-serif',fontSize:'0.95rem',padding:'10px 40px 10px 14px',outline:'none'}}/>
+          <button type="button" onClick={()=>setShowPwd(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'var(--muted)',fontSize:'1rem',padding:0,lineHeight:1}}>{showPwd?'🙈':'👁️'}</button>
+        </div>
         </div>
         <button className="btn btn-primary" type="submit" disabled={loading}>{loading?'Cargando...':authMode==='login'?'Entrar':'Registrarme'}</button>
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'1rem'}}>v2.3</p>
     </div></div>
   );
 }
 
 function PicksTab({matches,picks,savePick,justSaved,stageFilter,setStageFilter,onGroupChange,scrollToStandings}){
   const filtered=matches.filter(m=>m.stage===stageFilter);
-  const pickedCount=filtered.filter(m=>picks[m.id]?.result&&picks[m.id]?.goals).length;
+  const pickedCount=filtered.filter(m=>picks[m.id]?.result&&picks[m.id]?.goals!=null).length;
   const pct=filtered.length>0?Math.round((pickedCount/filtered.length)*100):0;
   const groupedMatches=stageFilter==='Grupos'?ALL_GROUPS.reduce((acc,g)=>{const ms=filtered.filter(m=>m.group_name===g);if(ms.length)acc[g]=ms;return acc;},{}):null;
   return(
@@ -650,21 +917,21 @@ function PicksTab({matches,picks,savePick,justSaved,stageFilter,setStageFilter,o
               <span>Grupo {g}</span>
               <button className="group-label-btn" onClick={()=>scrollToStandings(g)}>posiciones ↓</button>
             </div>
-            {groupedMatches[g].map(match=><MatchCard key={match.id} match={match} pick={picks[match.id]} savePick={savePick} justSaved={justSaved}/>)}
+            {groupedMatches[g].map(match=><MatchCard key={match.id} match={match} pick={picks[match.id]} savePick={savePick} saved={!!justSaved&&justSaved.startsWith(match.id+'-')}/>)}
           </div>
         ))
         :filtered.length===0
           ?<div className="empty-state">No hay partidos en esta fase aún</div>
-          :filtered.map(match=><MatchCard key={match.id} match={match} pick={picks[match.id]} savePick={savePick} justSaved={justSaved}/>)
+          :filtered.map(match=><MatchCard key={match.id} match={match} pick={picks[match.id]} savePick={savePick} saved={!!justSaved&&justSaved.startsWith(match.id+'-')}/>)
       }
     </div>
   );
 }
 
-function MatchCard({match,pick,savePick,justSaved}){
+const MatchCard=React.memo(function MatchCard({match,pick,savePick,saved}){
   const locked=isLocked(match.match_time);
   const soon=isClosingSoon(match.match_time);
-  const hasPick=pick?.result&&pick?.goals;
+  const hasPick=pick?.result&&pick?.goals!=null;
   const finished=match.home_score!=null&&match.away_score!=null;
   return(
     <div className={`match-card ${locked?'locked-card':''} ${hasPick?'picked':''}`}>
@@ -675,7 +942,7 @@ function MatchCard({match,pick,savePick,justSaved}){
       </div>
       {soon&&!locked&&<Countdown matchTime={match.match_time}/>}
       <div className="match-body">
-        {justSaved&&justSaved.startsWith(`${match.id}-`)&&<div className="pick-saved-toast">✓ Pick guardado</div>}
+        {saved&&<div className="pick-saved-toast">✓ Pick guardado</div>}
         <div className="teams">
           <div className="team"><span className="team-flag">{FLAGS[match.home_team]||'🏳️'}</span><div className="team-name">{match.home_team}</div></div>
           <div className="vs">VS</div>
@@ -684,7 +951,7 @@ function MatchCard({match,pick,savePick,justSaved}){
         {finished&&(
           <div className="result-score">
             {match.home_score} — {match.away_score}
-            {pick?.result&&pick?.goals&&(()=>{const pts=calcPoints(pick,match);return<span style={{marginLeft:12,fontSize:'0.85rem',color:pts>=3?'var(--green)':'var(--muted)'}}>+{pts} pts</span>;})()}
+            {pick?.result&&pick?.goals!=null&&(()=>{const pts=calcPoints(pick,match);return<span style={{marginLeft:12,fontSize:'0.85rem',color:pts>=3?'var(--green)':'var(--muted)'}}>+{pts} pts</span>;})()}
           </div>
         )}
         <div className="pick-row">
@@ -708,13 +975,13 @@ function MatchCard({match,pick,savePick,justSaved}){
       </div>
     </div>
   );
-}
+});
 
-function RankingsTab({rankings,userId,loading,onRefresh}){
+function RankingsTab({rankings,userId,loading,onRefresh,groupName}){
   if(loading)return<div className="loading"><div className="spinner"/><span>Cargando ranking...</span></div>;
   return(
     <div>
-      <div className="tab-section"><div className="section-title">RANKING</div><button className="refresh-btn" onClick={onRefresh}>↻ Actualizar</button></div>
+      <div className="tab-section"><div style={{flex:1}}><div className="section-title" style={{marginBottom:2}}>RANKING</div>{groupName&&<div style={{fontSize:'0.75rem',color:'var(--accent2)',fontWeight:600,letterSpacing:0.5,marginBottom:'0.5rem',textTransform:'uppercase'}}>{groupName}</div>}</div><button className="refresh-btn" onClick={onRefresh}>↻ Actualizar</button></div>
       {rankings.length===0&&<div className="empty-state">¡Haz tus picks para aparecer en el ranking!</div>}
       {rankings.map((entry,i)=>{
         const pos=i+1,isMe=entry.profile.id===userId,color=getAvatarColor(entry.profile.username);
@@ -789,6 +1056,7 @@ function PlayerPicker({value,onChange,locked}){
   const parse=(v)=>{const m=/^(.*)\s\(([^)]+)\)$/.exec(v||'');return m?{player:m[1],country:m[2]}:{player:'',country:''};};
   const init=parse(value);
   const[country,setCountry]=useState(init.country);
+  useEffect(()=>{const c=parse(value).country;if(c&&c!==country)setCountry(c);},[value]);
   const player=init.player;
   const list=country?(PLAYERS[country]||[]):[];
   return(
