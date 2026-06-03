@@ -1,0 +1,9 @@
+{
+  "name": "quiniela-wc26",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "stripe": "^14.21.0",
+    "@supabase/supabase-js": "^2.49.0"
+  }
+}
