@@ -184,6 +184,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .account-avatar{width:26px;height:26px;border-radius:50%;color:#0a0e1a;font-weight:700;font-size:0.68rem;display:flex;align-items:center;justify-content:center;}
 .account-caret{color:var(--muted);font-size:0.7rem;}
 .account-menu{position:absolute;right:0;top:calc(100% + 8px);background:var(--surface);border:1px solid var(--border);border-radius:12px;min-width:215px;padding:6px;z-index:201;box-shadow:0 12px 32px rgba(0,0,0,0.5);}
+.account-menu-divider{height:1px;background:var(--border);margin:6px 8px;}
 .account-menu-head{font-size:0.82rem;color:var(--text);font-weight:700;padding:8px 12px 8px;border-bottom:1px solid var(--border);margin-bottom:4px;}
 .account-menu-item{display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.85rem;padding:10px 12px;border-radius:8px;cursor:pointer;transition:background 0.15s;}
 .account-menu-item:hover{background:var(--surface2);}
@@ -404,6 +405,10 @@ function App(){
   const[paymentProcessing,setPaymentProcessing]=useState(false);
   const[paymentError,setPaymentError]=useState('');
   const[pendingSessionId]=useState(()=>{try{const p=new URLSearchParams(window.location.search);return(p.get('payment')==='success'&&p.get('session_id'))?p.get('session_id'):null;}catch(_){return null;}});
+  const[joinCode]=useState(()=>{try{const p=new URLSearchParams(window.location.search);const c=p.get('join');return c?c.toUpperCase():null;}catch(_){return null;}});
+  const[editingName,setEditingName]=useState(false);
+  const[nameInput,setNameInput]=useState('');
+  const[savingName,setSavingName]=useState(false);
   const[recoveryMode,setRecoveryMode]=useState(()=>{
     const h=window.location.hash;
     return h.includes('type=recovery');
@@ -440,13 +445,11 @@ function App(){
 
   useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
-    if(params.get('payment')==='success'){alert('[diag] La página cargó con payment=success en la URL. session_id detectado: '+(pendingSessionId?'SÍ':'NO'));}
     if(params.get('payment')==='cancelled'){localStorage.removeItem('wc26_pending_group');window.history.replaceState({},'',window.location.pathname);}
   },[]);
 
   useEffect(()=>{
     if(!user||!pendingSessionId)return;
-    alert('Verificando tu pago con el servidor...');
     const pending=JSON.parse(localStorage.getItem('wc26_pending_group')||'{}');
     processPayment(pendingSessionId,pending.groupName||'');
   },[user,pendingSessionId]);
@@ -622,17 +625,31 @@ function App(){
   const[menuOpen,setMenuOpen]=useState(false);
   function copyInviteCode(){
     if(!currentGroup)return;
-    const msg=`Código de invitación de "${currentGroup.name}":\n\n${currentGroup.invite_code}\n\nComparte este código para que tus amigos se unan gratis a tu quiniela en www.wc26pool.com`;
-    if(navigator.clipboard){navigator.clipboard.writeText(currentGroup.invite_code).then(()=>alert(msg+'\n\n(Código copiado al portapapeles)')).catch(()=>alert(msg));}
+    const link=`https://www.wc26pool.com/?join=${currentGroup.invite_code}`;
+    const msg=`Únete a mi quiniela "${currentGroup.name}" del Mundial 2026:\n\n${link}\n\n(o entra a www.wc26pool.com y usa el código ${currentGroup.invite_code})`;
+    if(navigator.clipboard){navigator.clipboard.writeText(link).then(()=>alert('¡Enlace copiado! Compártelo con tu grupo:\n\n'+link)).catch(()=>alert(msg));}
     else{alert(msg);}
+  }
+  async function saveName(){
+    const name=nameInput.trim();
+    if(!name){return;}
+    if(name===profile.username){setEditingName(false);return;}
+    setSavingName(true);
+    const{data,error}=await sb.from('profiles').update({username:name}).eq('id',user.id).select().maybeSingle();
+    setSavingName(false);
+    if(error){alert('No se pudo cambiar el nombre: '+error.message);return;}
+    if(data)setProfile(data);
+    setEditingName(false);
   }
   async function deleteAccount(){
     setMenuOpen(false);
     const ownsGroup=myGroups.some(g=>g.owner_id===user.id);
     const warn=ownsGroup
-      ?'Vas a ELIMINAR tu cuenta. Como creaste uno o más grupos, esos grupos y sus rankings se borrarán para todos sus miembros. Esta acción NO se puede deshacer.\n\n¿Continuar?'
-      :'Vas a ELIMINAR tu cuenta y todos tus datos (picks y predicciones). Esta acción NO se puede deshacer.\n\n¿Continuar?';
+      ?'⚠️ Vas a ELIMINAR tu cuenta de forma PERMANENTE.\n\nComo creaste uno o más grupos, esos grupos y sus rankings se borrarán para TODOS sus miembros.\n\nEsto NO es cerrar sesión. NO se puede deshacer.'
+      :'⚠️ Vas a ELIMINAR tu cuenta de forma PERMANENTE, junto con tus picks y predicciones.\n\nEsto NO es cerrar sesión (si solo quieres salir, usa "Cerrar sesión"). NO se puede deshacer.';
     if(!window.confirm(warn))return;
+    const typed=window.prompt('Para confirmar que quieres eliminar tu cuenta, escribe la palabra:  ELIMINAR');
+    if(!typed||typed.trim().toUpperCase()!=='ELIMINAR'){alert('Cancelado. Tu cuenta NO se eliminó.');return;}
     try{
       const{data:{session}}=await sb.auth.getSession();
       const res=await fetch('/api/delete-account',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken:session&&session.access_token})});
@@ -662,7 +679,7 @@ function App(){
       </div>
     </div>
   );
-  if(!currentGroup&&!isAdmin)return<GroupSelectionScreen user={user} profile={profile} myGroups={myGroups} onGroupSelected={async(g)=>{await loadGroupMembers(g.id);setCurrentGroup(g);}}/>;
+  if(!currentGroup&&!isAdmin)return<GroupSelectionScreen user={user} profile={profile} myGroups={myGroups} joinCode={joinCode} onGroupSelected={async(g)=>{await loadGroupMembers(g.id);setCurrentGroup(g);}}/>;
   const myPoints=Object.values(picks).reduce((acc,pick)=>{const match=matches.find(m=>m.id===pick.match_id);if(!match||match.home_score==null)return acc;return acc+calcPoints(pick,match);},0);
   const myPredPoints=calcPredictionPoints(prediction,predResults);
   const octavosTimes=matches.filter(m=>m.stage==='Octavos').map(m=>new Date(m.match_time).getTime());
@@ -692,16 +709,33 @@ function App(){
                 <div onClick={()=>setMenuOpen(false)} style={{position:'fixed',inset:0,zIndex:200}}/>
                 <div className="account-menu">
                   <div className="account-menu-head">{profile.username}{currentGroup&&<div style={{fontSize:'0.7rem',color:'var(--accent2)',fontWeight:600,marginTop:2}}>{currentGroup.name}</div>}</div>
-                  {currentGroup&&user.id===currentGroup.owner_id&&<button className="account-menu-item" onClick={()=>{copyInviteCode();setMenuOpen(false);}}>📋 Copiar código del grupo</button>}
+                  <button className="account-menu-item" onClick={()=>{setNameInput(profile.username);setEditingName(true);setMenuOpen(false);}}>✏️ Cambiar mi nombre</button>
+                  {currentGroup&&user.id===currentGroup.owner_id&&<button className="account-menu-item" onClick={()=>{copyInviteCode();setMenuOpen(false);}}>🔗 Copiar enlace de invitación</button>}
                   <button className="account-menu-item" onClick={()=>{setCurrentGroup(null);setGroupMembers([]);setMenuOpen(false);}}>🔄 Mis grupos / unirme a otro</button>
                   <button className="account-menu-item" onClick={()=>{setMenuOpen(false);sb.auth.signOut();}}>↩️ Cerrar sesión</button>
-                  <button className="account-menu-item danger" onClick={deleteAccount}>🗑️ Eliminar mi cuenta</button>
+                  <div className="account-menu-divider"/>
+                  <button className="account-menu-item danger" onClick={deleteAccount}>🗑️ Eliminar mi cuenta (permanente)</button>
                 </div>
               </>}
             </div>
           </div>
         </div>
       </header>
+      {editingName&&(
+        <div onClick={()=>!savingName&&setEditingName(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:'1.5rem'}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:'1.75rem',width:'100%',maxWidth:380}}>
+            <div style={{fontFamily:'Bebas Neue,sans-serif',fontSize:'1.4rem',letterSpacing:1.5,marginBottom:'1rem'}}>CAMBIAR MI NOMBRE</div>
+            <div className="field"><label>Nombre en la quiniela</label>
+              <input autoFocus value={nameInput} onChange={e=>setNameInput(e.target.value)} maxLength={30} placeholder="Tu nombre" onKeyDown={e=>e.key==='Enter'&&saveName()}/>
+            </div>
+            <p style={{color:'var(--muted)',fontSize:'0.78rem',marginBottom:'1rem'}}>Así te verán los demás en el ranking de tu grupo.</p>
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>setEditingName(false)} disabled={savingName} style={{flex:1,padding:12,borderRadius:8,border:'1px solid var(--border)',background:'var(--surface2)',color:'var(--text)',fontFamily:'DM Sans,sans-serif',fontWeight:600,cursor:'pointer'}}>Cancelar</button>
+              <button className="btn btn-primary" style={{flex:1}} onClick={saveName} disabled={savingName||!nameInput.trim()}>{savingName?'Guardando...':'Guardar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
       <main className="main">
         {tab==='picks'&&(
           <div className="picks-layout">
@@ -721,13 +755,18 @@ function App(){
   );
 }
 
-function GroupSelectionScreen({user,profile,myGroups,onGroupSelected}){
+function GroupSelectionScreen({user,profile,myGroups,joinCode,onGroupSelected}){
   const[mode,setMode]=useState('select');
   const[groupName,setGroupName]=useState('');
-  const[inviteCode,setInviteCode]=useState('');
+  const[inviteCode,setInviteCode]=useState(joinCode||'');
   const[promoCode,setPromoCode]=useState('');
   const[loading,setLoading]=useState(false);
   const[error,setError]=useState('');
+  const[autoJoining,setAutoJoining]=useState(!!joinCode);
+  useEffect(()=>{
+    if(joinCode){handleJoin(joinCode).finally(()=>setAutoJoining(false));}
+  // eslint-disable-next-line
+  },[]);
   async function handleCreate(){
     if(!groupName.trim())return;
     setLoading(true);setError('');
@@ -747,12 +786,12 @@ function GroupSelectionScreen({user,profile,myGroups,onGroupSelected}){
       window.location.href=url;
     }catch(e){setError(e.message||'Error de conexión. Intenta de nuevo.');setLoading(false);}
   }
-  async function handleJoin(){
-    if(!inviteCode.trim())return;
+  async function handleJoin(codeArg){
+    const code=((typeof codeArg==='string'?codeArg:inviteCode)||'').toUpperCase().trim();
+    if(!code)return;
     setLoading(true);setError('');
-    const code=inviteCode.toUpperCase().trim();
     const{data:group}=await sb.from('groups').select('*').eq('invite_code',code).eq('status','active').maybeSingle();
-    if(!group){setError('Código inválido. Verifica con el administrador del grupo.');setLoading(false);return;}
+    if(!group){setError('Código inválido. Verifica el enlace o el código con quien te invitó.');setLoading(false);return;}
     const{data:existing}=await sb.from('group_members').select('*').eq('group_id',group.id).eq('user_id',user.id).maybeSingle();
     if(!existing){
       const{error:joinErr}=await sb.from('group_members').insert({group_id:group.id,user_id:user.id});
@@ -761,6 +800,11 @@ function GroupSelectionScreen({user,profile,myGroups,onGroupSelected}){
     onGroupSelected(group);
   }
   const btnBase={flex:1,padding:12,borderRadius:8,border:'1px solid var(--border)',background:'var(--surface2)',color:'var(--text)',fontFamily:'DM Sans,sans-serif',fontSize:'0.95rem',fontWeight:600,cursor:'pointer'};
+  if(autoJoining)return(
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)',padding:'1.5rem'}}>
+      <div style={{textAlign:'center'}}><div className='spinner' style={{margin:'0 auto 1rem'}}/><div style={{fontFamily:'Bebas Neue,sans-serif',fontSize:'1.3rem',letterSpacing:1.5}}>UNIÉNDOTE AL GRUPO...</div></div>
+    </div>
+  );
   return(
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)',padding:'1.5rem'}}>
       <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:'2.5rem',width:'100%',maxWidth:440}}>
@@ -805,7 +849,7 @@ function GroupSelectionScreen({user,profile,myGroups,onGroupSelected}){
           <div className='field'><label>Código de invitación</label>
             <input value={inviteCode} onChange={e=>setInviteCode(e.target.value.toUpperCase())} placeholder='ej. ABC12345' maxLength={10} style={{letterSpacing:2,textTransform:'uppercase'}} onKeyDown={e=>e.key==='Enter'&&handleJoin()}/>
           </div>
-          <button className='btn btn-primary' disabled={loading||!inviteCode.trim()} onClick={handleJoin}>
+          <button className='btn btn-primary' disabled={loading||!inviteCode.trim()} onClick={()=>handleJoin()}>
             {loading?'Verificando...':'Unirme al grupo'}
           </button>
           <p className='auth-toggle'><a onClick={()=>{setMode('select');setError('');}}>← Volver</a></p>
@@ -897,7 +941,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
         <button className="btn btn-primary" type="submit" disabled={loading}>{loading?'Cargando...':authMode==='login'?'Entrar':'Registrarme'}</button>
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'1rem'}}>v2.5</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'1rem'}}>v2.6</p>
     </div></div>
   );
 }
