@@ -443,6 +443,7 @@ function App(){
     const status=params.get('payment');
     const sessionId=params.get('session_id');
     if(status==='success'&&sessionId){
+      alert('Detectado regreso de pago. Verificando con el servidor...');
       const pending=JSON.parse(localStorage.getItem('wc26_pending_group')||'{}');
       processPayment(sessionId,pending.groupName||'');
     }else if(status==='cancelled'){
@@ -497,8 +498,11 @@ function App(){
     setPaymentProcessing(true);setPaymentError('');
     try{
       const res=await fetch('/api/verify-payment',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId,userId:user.id,groupName})});
-      const{group,error:apiErr}=await res.json();
-      if(apiErr)throw new Error(apiErr);
+      let body;
+      try{body=await res.json();}catch(_){body={error:'Respuesta inválida del servidor (status '+res.status+').'};}
+      if(!res.ok||body.error)throw new Error(body.error||('Error del servidor '+res.status));
+      const group=body.group;
+      if(!group||!group.id)throw new Error('El servidor no devolvió el grupo creado.');
       localStorage.removeItem('wc26_pending_group');
       window.history.replaceState({},'',window.location.pathname);
       const groups=await loadMyGroups(user.id);
@@ -506,7 +510,9 @@ function App(){
       await loadGroupMembers(newGroup.id);
       setCurrentGroup(newGroup);
     }catch(e){
-      setPaymentError(e.message||'Error al procesar el pago. Intenta de nuevo o contáctanos.');
+      const msg='No se pudo crear tu grupo tras el pago: '+(e.message||e);
+      setPaymentError(msg+' Tu pago quedó registrado; escríbenos para activarlo.');
+      alert(msg);
     }
     setPaymentProcessing(false);
   }
@@ -892,7 +898,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
         <button className="btn btn-primary" type="submit" disabled={loading}>{loading?'Cargando...':authMode==='login'?'Entrar':'Registrarme'}</button>
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'1rem'}}>v2.3</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'1rem'}}>v2.4</p>
     </div></div>
   );
 }
