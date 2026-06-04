@@ -403,6 +403,7 @@ function App(){
   const[groupMembers,setGroupMembers]=useState([]);
   const[paymentProcessing,setPaymentProcessing]=useState(false);
   const[paymentError,setPaymentError]=useState('');
+  const[pendingSessionId]=useState(()=>{try{const p=new URLSearchParams(window.location.search);return(p.get('payment')==='success'&&p.get('session_id'))?p.get('session_id'):null;}catch(_){return null;}});
   const[recoveryMode,setRecoveryMode]=useState(()=>{
     const h=window.location.hash;
     return h.includes('type=recovery');
@@ -438,19 +439,17 @@ function App(){
   },[user]);
 
   useEffect(()=>{
-    if(!user)return;
     const params=new URLSearchParams(window.location.search);
-    const status=params.get('payment');
-    const sessionId=params.get('session_id');
-    if(status==='success'&&sessionId){
-      alert('Detectado regreso de pago. Verificando con el servidor...');
-      const pending=JSON.parse(localStorage.getItem('wc26_pending_group')||'{}');
-      processPayment(sessionId,pending.groupName||'');
-    }else if(status==='cancelled'){
-      localStorage.removeItem('wc26_pending_group');
-      window.history.replaceState({},'',window.location.pathname);
-    }
-  },[user]);
+    if(params.get('payment')==='success'){alert('[diag] La página cargó con payment=success en la URL. session_id detectado: '+(pendingSessionId?'SÍ':'NO'));}
+    if(params.get('payment')==='cancelled'){localStorage.removeItem('wc26_pending_group');window.history.replaceState({},'',window.location.pathname);}
+  },[]);
+
+  useEffect(()=>{
+    if(!user||!pendingSessionId)return;
+    alert('Verificando tu pago con el servidor...');
+    const pending=JSON.parse(localStorage.getItem('wc26_pending_group')||'{}');
+    processPayment(pendingSessionId,pending.groupName||'');
+  },[user,pendingSessionId]);
 
   async function loadProfile(uid,isNew){
     try{
@@ -898,7 +897,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
         <button className="btn btn-primary" type="submit" disabled={loading}>{loading?'Cargando...':authMode==='login'?'Entrar':'Registrarme'}</button>
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'1rem'}}>v2.4</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'1rem'}}>v2.5</p>
     </div></div>
   );
 }
