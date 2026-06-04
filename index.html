@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Quiniela WC 2026</title>
+<title>Trivia Mundialista WC 2026</title>
 <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -185,6 +185,9 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .account-caret{color:var(--muted);font-size:0.7rem;}
 .account-menu{position:absolute;right:0;top:calc(100% + 8px);background:var(--surface);border:1px solid var(--border);border-radius:12px;min-width:215px;padding:6px;z-index:201;box-shadow:0 12px 32px rgba(0,0,0,0.5);}
 .account-menu-divider{height:1px;background:var(--border);margin:6px 8px;}
+.check-row{display:flex;align-items:flex-start;gap:10px;font-size:0.82rem;color:var(--muted);margin-bottom:10px;cursor:pointer;line-height:1.4;text-transform:none;letter-spacing:0;}
+.check-row input{margin-top:2px;width:16px;height:16px;flex:0 0 auto;accent-color:var(--accent);cursor:pointer;}
+.check-row a{color:var(--accent);text-decoration:underline;}
 .account-menu-head{font-size:0.82rem;color:var(--text);font-weight:700;padding:8px 12px 8px;border-bottom:1px solid var(--border);margin-bottom:4px;}
 .account-menu-item{display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.85rem;padding:10px 12px;border-radius:8px;cursor:pointer;transition:background 0.15s;}
 .account-menu-item:hover{background:var(--surface2);}
@@ -193,7 +196,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 @media(max-width:600px){
   .header{padding:0 1rem;}
   .header-inner{flex-wrap:wrap;height:auto;padding:10px 0;gap:8px;}
-  .logo{order:1;font-size:1.3rem;line-height:1;white-space:nowrap;}
+  .logo{order:1;font-size:1.1rem;line-height:1;white-space:nowrap;}
   .user-bar{order:2;margin-left:auto;}
   .nav{order:3;width:100%;overflow-x:auto;flex-wrap:nowrap;gap:4px;padding-bottom:2px;-webkit-overflow-scrolling:touch;}
   .nav::-webkit-scrollbar{display:none;}
@@ -304,7 +307,7 @@ function OnboardingScreen({username,onDone}){
       <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:'2.5rem',width:'100%',maxWidth:420,textAlign:'center'}}>
         <div style={{fontFamily:'Bebas Neue,sans-serif',fontSize:'1rem',letterSpacing:3,color:'var(--accent2)',marginBottom:8}}>BIENVENIDO</div>
         <div style={{fontFamily:'Bebas Neue,sans-serif',fontSize:'2.2rem',letterSpacing:2,marginBottom:'0.25rem'}}>HOLA, {username.toUpperCase()} 👋</div>
-        <p style={{color:'var(--muted)',fontSize:'0.9rem',marginBottom:'2rem'}}>Así funciona la quiniela:</p>
+        <p style={{color:'var(--muted)',fontSize:'0.9rem',marginBottom:'2rem'}}>Así funciona la trivia mundialista:</p>
         <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:12,padding:'1.5rem 1.25rem',marginBottom:'1.5rem',minHeight:140}}>
           <div style={{fontSize:'2.5rem',marginBottom:12}}>{steps[step].icon}</div>
           <div style={{fontWeight:600,fontSize:'1rem',marginBottom:8}}>{steps[step].title}</div>
@@ -626,7 +629,7 @@ function App(){
   function copyInviteCode(){
     if(!currentGroup)return;
     const link=`https://www.wc26pool.com/?join=${currentGroup.invite_code}`;
-    const msg=`Únete a mi quiniela "${currentGroup.name}" del Mundial 2026:\n\n${link}\n\n(o entra a www.wc26pool.com y usa el código ${currentGroup.invite_code})`;
+    const msg=`Únete a mi trivia mundialista "${currentGroup.name}" del Mundial 2026:\n\n${link}\n\n(o entra a www.wc26pool.com y usa el código ${currentGroup.invite_code})`;
     if(navigator.clipboard){navigator.clipboard.writeText(link).then(()=>alert('¡Enlace copiado! Compártelo con tu grupo:\n\n'+link)).catch(()=>alert(msg));}
     else{alert(msg);}
   }
@@ -664,7 +667,7 @@ function App(){
   }
 
   if(recoveryMode)return<ResetPasswordScreen onDone={()=>{setRecoveryMode(false);window.location.hash='';window.location.reload();}}/>;
-  if(loading)return<div className="app"><div className="loading"><div className="spinner"/><span>Cargando quiniela...</span></div></div>;
+  if(loading)return<div className="app"><div className="loading"><div className="spinner"/><span>Cargando trivia...</span></div></div>;
   if(!user||!profile)return<AuthScreen onAuth={handleAuth} authMode={authMode} setAuthMode={setAuthMode} loading={authLoading} error={authError} registerSuccess={registerSuccess}/>;
   if(showOnboarding)return<OnboardingScreen username={profile.username} onDone={()=>setShowOnboarding(false)}/>;
 
@@ -690,7 +693,7 @@ function App(){
     <div className="app">
       <header className="header">
         <div className="header-inner">
-          <div className="logo">QUINIELA <span>WC26</span></div>
+          <div className="logo">TRIVIA <span>MUNDIALISTA</span></div>
           <nav className="nav">
             <button className={`nav-btn ${tab==='picks'?'active':''}`} onClick={()=>setTab('picks')}>Partidos</button>
             <button className={`nav-btn ${tab==='rankings'?'active':''}`} onClick={()=>{setTab('rankings');loadRankings();}}>Ranking</button>
@@ -725,7 +728,7 @@ function App(){
         <div onClick={()=>!savingName&&setEditingName(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:'1.5rem'}}>
           <div onClick={e=>e.stopPropagation()} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:'1.75rem',width:'100%',maxWidth:380}}>
             <div style={{fontFamily:'Bebas Neue,sans-serif',fontSize:'1.4rem',letterSpacing:1.5,marginBottom:'1rem'}}>CAMBIAR MI NOMBRE</div>
-            <div className="field"><label>Nombre en la quiniela</label>
+            <div className="field"><label>Nombre en la trivia</label>
               <input autoFocus value={nameInput} onChange={e=>setNameInput(e.target.value)} maxLength={30} placeholder="Tu nombre" onKeyDown={e=>e.key==='Enter'&&saveName()}/>
             </div>
             <p style={{color:'var(--muted)',fontSize:'0.78rem',marginBottom:'1rem'}}>Así te verán los demás en el ranking de tu grupo.</p>
@@ -751,6 +754,7 @@ function App(){
         {tab==='predicciones'&&<PredictionsTab prediction={prediction} savePrediction={savePrediction} locked={predLocked} octavosStart={octavosStart}/>}
         {tab==='admin'&&isAdmin&&<AdminTab matches={matches} adminScores={adminScores} setAdminScores={setAdminScores} saveAdminScore={saveAdminScore} adminSaving={adminSaving} predResults={predResults} savePredResult={savePredResult}/>}
       </main>
+      <LegalFooter/>
     </div>
   );
 }
@@ -808,7 +812,7 @@ function GroupSelectionScreen({user,profile,myGroups,joinCode,onGroupSelected}){
   return(
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)',padding:'1.5rem'}}>
       <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:'2.5rem',width:'100%',maxWidth:440}}>
-        <div style={{fontFamily:'Bebas Neue,sans-serif',fontSize:'2rem',letterSpacing:3,marginBottom:4}}>QUINIELA <span style={{color:'var(--accent2)'}}>WC26</span></div>
+        <div style={{fontFamily:'Bebas Neue,sans-serif',fontSize:'2rem',letterSpacing:3,marginBottom:4}}>TRIVIA <span style={{color:'var(--accent2)'}}>MUNDIALISTA</span></div>
         <p style={{color:'var(--muted)',fontSize:'0.9rem',marginBottom:'1.75rem'}}>Hola, <strong style={{color:'var(--text)'}}>{profile.username}</strong>. ¿A qué grupo entras?</p>
         {error&&<div className='error-msg'>{error}</div>}
         {mode==='select'&&<>
@@ -832,16 +836,16 @@ function GroupSelectionScreen({user,profile,myGroups,joinCode,onGroupSelected}){
           <div className='field'><label>Nombre del grupo</label>
             <input value={groupName} onChange={e=>setGroupName(e.target.value)} placeholder='ej. Los Compas del Trabajo' maxLength={50} onKeyDown={e=>e.key==='Enter'&&handleCreate()}/>
           </div>
-          <div className='field'><label>Código promocional (opcional)</label>
-            <input value={promoCode} onChange={e=>setPromoCode(e.target.value)} placeholder='Déjalo vacío si vas a pagar' maxLength={40} onKeyDown={e=>e.key==='Enter'&&handleCreate()}/>
+          <div className='field'><label>Código promocional</label>
+            <input value={promoCode} onChange={e=>setPromoCode(e.target.value)} placeholder='Pídelo al organizador' maxLength={40} onKeyDown={e=>e.key==='Enter'&&handleCreate()}/>
           </div>
-          <div style={{background:promoCode.trim()?'rgba(16,185,129,0.07)':'rgba(232,255,71,0.05)',border:'1px solid '+(promoCode.trim()?'rgba(16,185,129,0.25)':'rgba(232,255,71,0.15)'),borderRadius:8,padding:'10px 14px',fontSize:'0.82rem',marginBottom:'1rem',lineHeight:1.5}}>
+          <div style={{background:promoCode.trim()?'rgba(16,185,129,0.07)':'rgba(0,212,255,0.06)',border:'1px solid '+(promoCode.trim()?'rgba(16,185,129,0.25)':'rgba(0,212,255,0.2)'),borderRadius:8,padding:'10px 14px',fontSize:'0.82rem',marginBottom:'1rem',lineHeight:1.5}}>
             {promoCode.trim()
-              ?<>🎟️ Con un código promocional válido, tu grupo se crea <strong>gratis</strong> (sin pago).</>
-              :<>💳 Pago único de <strong>$149 MXN</strong>. Tus amigos se unen gratis con el código que se genera.</>}
+              ?<>🎟️ Con un código promocional válido, tu grupo se crea <strong>gratis</strong>.</>
+              :<>🚧 El <strong>pago con tarjeta está en construcción</strong>. Por ahora, crea tu grupo con un código promocional. ¡Pronto podrás crear grupos con pago!</>}
           </div>
-          <button className='btn btn-primary' disabled={loading||!groupName.trim()} onClick={handleCreate}>
-            {loading?(promoCode.trim()?'Creando grupo...':'Redirigiendo a pago...'):(promoCode.trim()?'Crear grupo gratis →':'Pagar $149 MXN y crear grupo →')}
+          <button className='btn btn-primary' disabled={loading||!groupName.trim()||!promoCode.trim()} onClick={handleCreate}>
+            {loading?'Creando grupo...':(promoCode.trim()?'Crear grupo gratis →':'Pago con tarjeta (próximamente)')}
           </button>
           <p className='auth-toggle'><a onClick={()=>{setMode('select');setError('');setPromoCode('');}}>← Volver</a></p>
         </>}
@@ -890,6 +894,22 @@ function ResetPasswordScreen({onDone}){
   );
 }
 
+function LegalFooter(){
+  const lnk={color:'var(--muted)',textDecoration:'underline',cursor:'pointer'};
+  return(
+    <div style={{textAlign:'center',fontSize:'0.7rem',color:'var(--muted)',padding:'1rem 0 0',lineHeight:1.9}}>
+      <div>
+        <a href="/terminos.html" target="_blank" rel="noopener" style={lnk}>Términos y Condiciones</a>
+        {' · '}
+        <a href="/privacidad.html" target="_blank" rel="noopener" style={lnk}>Aviso de Privacidad</a>
+        {' · '}
+        <a href="mailto:contacto@wc26pool.com" style={lnk}>Contacto</a>
+      </div>
+      <div style={{marginTop:4,opacity:0.7,fontSize:'0.65rem'}}>No afiliado a FIFA ni a organismos oficiales. Plataforma recreativa de trivia deportiva.</div>
+    </div>
+  );
+}
+
 function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess}){
   const[email,setEmail]=useState('');
   const[password,setPassword]=useState('');
@@ -898,6 +918,10 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
   const[forgotLoading,setForgotLoading]=useState(false);
   const[forgotMsg,setForgotMsg]=useState('');
   const[showPwd,setShowPwd]=useState(false);
+  const[over18,setOver18]=useState(false);
+  const[acceptTerms,setAcceptTerms]=useState(false);
+  const[acceptPrivacy,setAcceptPrivacy]=useState(false);
+  const canRegister=over18&&acceptTerms&&acceptPrivacy;
   async function handleForgot(e){
     e.preventDefault();setForgotLoading(true);setForgotMsg('');
     const{error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:'https://www.wc26pool.com'});
@@ -921,12 +945,12 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
   }
   return(
     <div className="auth-wrap"><div className="auth-card">
-      <div className="auth-title">QUINIELA<br/>WC <span style={{color:'var(--accent2)'}}>2026</span></div>
+      <div className="auth-title">TRIVIA<br/><span style={{color:'var(--accent2)'}}>MUNDIALISTA</span></div>
       <p className="auth-sub">{authMode==='login'?'Inicia sesión para participar':'Crea tu cuenta y participa'}</p>
       {error&&<div className="error-msg">{error}</div>}
       {registerSuccess&&<div className="success-msg">{registerSuccess}</div>}
-      <form onSubmit={e=>onAuth(e,email,password,username)}>
-        {authMode==='register'&&(<div className="field"><label>Nombre en la quiniela</label><input value={username} onChange={e=>setUsername(e.target.value)} placeholder="ej. ElChavo" autoComplete="username" required/></div>)}
+      <form onSubmit={e=>{e.preventDefault();if(authMode==='register'&&!canRegister)return;onAuth(e,email,password,username);}}>
+        {authMode==='register'&&(<div className="field"><label>Nombre en la trivia</label><input value={username} onChange={e=>setUsername(e.target.value)} placeholder="ej. ElChavo" autoComplete="username" required/></div>)}
         <div className="field"><label>Correo electrónico</label><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tu@correo.com" autoComplete="email" required/></div>
         <div className="field">
           <label style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
@@ -938,10 +962,16 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
           <button type="button" onClick={()=>setShowPwd(v=>!v)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'var(--muted)',fontSize:'1rem',padding:0,lineHeight:1}}>{showPwd?'🙈':'👁️'}</button>
         </div>
         </div>
-        <button className="btn btn-primary" type="submit" disabled={loading}>{loading?'Cargando...':authMode==='login'?'Entrar':'Registrarme'}</button>
+        {authMode==='register'&&(<div style={{margin:'0 0 1.25rem'}}>
+          <label className="check-row"><input type="checkbox" checked={over18} onChange={e=>setOver18(e.target.checked)}/><span>Declaro ser mayor de 18 años.</span></label>
+          <label className="check-row"><input type="checkbox" checked={acceptTerms} onChange={e=>setAcceptTerms(e.target.checked)}/><span>Acepto los <a href="/terminos.html" target="_blank" rel="noopener">Términos y Condiciones</a>.</span></label>
+          <label className="check-row"><input type="checkbox" checked={acceptPrivacy} onChange={e=>setAcceptPrivacy(e.target.checked)}/><span>He leído el <a href="/privacidad.html" target="_blank" rel="noopener">Aviso de Privacidad</a>.</span></label>
+        </div>)}
+        <button className="btn btn-primary" type="submit" disabled={loading||(authMode==='register'&&!canRegister)}>{loading?'Cargando...':authMode==='login'?'Entrar':'Registrarme'}</button>
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'1rem'}}>v2.6</p>
+      <LegalFooter/>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v2.8</p>
     </div></div>
   );
 }
