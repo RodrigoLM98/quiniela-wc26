@@ -509,6 +509,15 @@ function App(){
   },[user&&user.id,currentGroup]);
 
   useEffect(()=>{
+    const uid=user&&user.id;
+    if(!uid)return;
+    const onVis=()=>{if(document.visibilityState==='visible'){loadMatches();loadMyPicks(uid);}};
+    document.addEventListener('visibilitychange',onVis);
+    window.addEventListener('focus',onVis);
+    return()=>{document.removeEventListener('visibilitychange',onVis);window.removeEventListener('focus',onVis);};
+  },[user&&user.id]);
+
+  useEffect(()=>{
     if(!user||!pendingSessionId)return;
     const pending=JSON.parse(localStorage.getItem('wc26_pending_group')||'{}');
     processPayment(pendingSessionId,pending.groupName||'');
@@ -654,12 +663,16 @@ function App(){
     const existing=picksRef.current[matchId]||{};
     const optimistic={...existing,user_id:user.id,match_id:matchId,[field]:value,updated_at:new Date().toISOString()};
     setPicks(prev=>({...prev,[matchId]:optimistic}));
-    setJustSaved(`${matchId}-${field}`);
-    setTimeout(()=>setJustSaved(null),1500);
     const payload={...existing,user_id:user.id,match_id:matchId,[field]:value};
     const{data,error}=await sb.from('picks').upsert(payload,{onConflict:'user_id,match_id'}).select().single();
-    if(error){setPicks(prev=>({...prev,[matchId]:existing}));}
-    else if(data){setPicks(prev=>({...prev,[matchId]:data}));}
+    if(error){
+      setPicks(prev=>({...prev,[matchId]:existing}));
+      alert('⚠️ Tu pick NO se guardó ('+(error.message||'error de conexión')+').\n\nRevisa tu conexión a internet e inténtalo de nuevo. Verifica que tu selección siga marcada.');
+      return;
+    }
+    if(data){setPicks(prev=>({...prev,[matchId]:data}));}
+    setJustSaved(`${matchId}-${field}`);
+    setTimeout(()=>setJustSaved(null),1500);
   },[user]);
 
   async function saveAdminScore(matchId){
@@ -1028,7 +1041,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v3.0</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v3.1</p>
     </div></div>
   );
 }
