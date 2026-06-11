@@ -185,6 +185,12 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .account-caret{color:var(--muted);font-size:0.7rem;}
 .account-menu{position:absolute;right:0;top:calc(100% + 8px);background:var(--surface);border:1px solid var(--border);border-radius:12px;min-width:215px;padding:6px;z-index:201;box-shadow:0 12px 32px rgba(0,0,0,0.5);}
 .account-menu-divider{height:1px;background:var(--border);margin:6px 8px;}
+.rules-banner{background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.18);border-radius:12px;margin-bottom:1rem;overflow:hidden;}
+.rules-head{width:100%;display:flex;justify-content:space-between;align-items:center;background:none;border:none;color:var(--accent2);font-family:'DM Sans',sans-serif;font-weight:700;font-size:0.85rem;padding:10px 16px;cursor:pointer;letter-spacing:0.3px;}
+.rules-list{list-style:none;margin:0;padding:0 16px 12px;}
+.rules-list li{font-size:0.8rem;color:#cdd6e2;padding:3px 0;line-height:1.45;}
+.meta-link{background:none;border:none;color:var(--accent2);font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:3px;}
+.no-pick{background:rgba(255,71,87,0.08);border:1px solid rgba(255,71,87,0.22);border-radius:8px;padding:7px 12px;font-size:0.78rem;color:#ff8a94;font-weight:600;margin-bottom:10px;text-align:center;}
 .check-row{display:flex;align-items:flex-start;gap:10px;font-size:0.82rem;color:var(--muted);margin-bottom:10px;cursor:pointer;line-height:1.4;text-transform:none;letter-spacing:0;}
 .check-row input{margin-top:2px;width:16px;height:16px;flex:0 0 auto;accent-color:var(--accent);cursor:pointer;}
 .check-row a{color:var(--accent);text-decoration:underline;}
@@ -1041,8 +1047,26 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v3.1</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v3.2</p>
     </div></div>
+  );
+}
+
+function RulesBanner(){
+  const[open,setOpen]=useState(true);
+  return(
+    <div className="rules-banner">
+      <button className="rules-head" onClick={()=>setOpen(o=>!o)}>
+        <span>📜 Reglas de la trivia</span><span style={{fontSize:'0.7rem'}}>{open?'▲ ocultar':'▼ ver'}</span>
+      </button>
+      {open&&<ul className="rules-list">
+        <li>⚽ Atinar el <strong>resultado</strong> (local, empate o visitante): <strong>3 pts</strong></li>
+        <li>🥅 Atinar los <strong>goles totales</strong> del partido (0, 1, 2, 3 o 4+): <strong>+1 pt</strong></li>
+        <li>🔒 Cada partido <strong>cierra 1 hora antes</strong> de su inicio. Sin pick = 0 pts en ese partido.</li>
+        <li>🔮 Las <strong>predicciones</strong> (campeón, goleador…) se pueden editar hasta el inicio de los octavos.</li>
+        <li>🏆 Gana quien acumule más puntos al final del Mundial.</li>
+      </ul>}
+    </div>
   );
 }
 
@@ -1050,34 +1074,34 @@ function PicksTab({matches,picks,savePick,justSaved,stageFilter,setStageFilter,o
   const filtered=matches.filter(m=>m.stage===stageFilter);
   const pickedCount=filtered.filter(m=>picks[m.id]?.result&&picks[m.id]?.goals!=null).length;
   const pct=filtered.length>0?Math.round((pickedCount/filtered.length)*100):0;
-  const groupedMatches=stageFilter==='Grupos'?ALL_GROUPS.reduce((acc,g)=>{const ms=filtered.filter(m=>m.group_name===g);if(ms.length)acc[g]=ms;return acc;},{}):null;
+  const byDate=filtered.reduce((acc,m)=>{
+    const d=new Date(m.match_time).toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});
+    const key=d.charAt(0).toUpperCase()+d.slice(1);
+    (acc[key]=acc[key]||[]).push(m);return acc;
+  },{});
   return(
     <div>
       <div className="tab-section"><div className="section-title">TUS PICKS</div></div>
+      <RulesBanner/>
       <div className="picks-progress">
         <div className="progress-labels"><span>{pickedCount} de {filtered.length} partidos elegidos</span><strong>{pct}%</strong></div>
         <div className="progress-track"><div className="progress-fill" style={{width:pct+'%'}}/></div>
       </div>
       <div className="stage-filter">{STAGES.map(s=><button key={s} className={`stage-btn ${stageFilter===s?'active':''}`} onClick={()=>setStageFilter(s)}>{s}</button>)}</div>
-      {stageFilter==='Grupos'&&groupedMatches
-        ?ALL_GROUPS.filter(g=>groupedMatches[g]).map(g=>(
-          <div key={g}>
-            <div className="group-label">
-              <span>Grupo {g}</span>
-              <button className="group-label-btn" onClick={()=>scrollToStandings(g)}>posiciones ↓</button>
-            </div>
-            {groupedMatches[g].map(match=><MatchCard key={match.id} match={match} pick={picks[match.id]} savePick={savePick} saved={!!justSaved&&justSaved.startsWith(match.id+'-')}/>)}
+      {filtered.length===0
+        ?<div className="empty-state">No hay partidos en esta fase aún</div>
+        :Object.keys(byDate).map(d=>(
+          <div key={d}>
+            <div className="group-label"><span>📅 {d}</span></div>
+            {byDate[d].map(match=><MatchCard key={match.id} match={match} pick={picks[match.id]} savePick={savePick} saved={!!justSaved&&justSaved.startsWith(match.id+'-')} onGroupClick={stageFilter==='Grupos'?scrollToStandings:null}/>)}
           </div>
         ))
-        :filtered.length===0
-          ?<div className="empty-state">No hay partidos en esta fase aún</div>
-          :filtered.map(match=><MatchCard key={match.id} match={match} pick={picks[match.id]} savePick={savePick} saved={!!justSaved&&justSaved.startsWith(match.id+'-')}/>)
       }
     </div>
   );
 }
 
-const MatchCard=React.memo(function MatchCard({match,pick,savePick,saved}){
+const MatchCard=React.memo(function MatchCard({match,pick,savePick,saved,onGroupClick}){
   const locked=isLocked(match.match_time);
   const soon=isClosingSoon(match.match_time);
   const hasPick=pick?.result&&pick?.goals!=null;
@@ -1085,13 +1109,18 @@ const MatchCard=React.memo(function MatchCard({match,pick,savePick,saved}){
   return(
     <div className={`match-card ${locked?'locked-card':''} ${hasPick?'picked':''}`}>
       <div className="match-header">
-        <div className="match-meta">{match.group_name?`Grupo ${match.group_name}`:match.stage}</div>
+        <div className="match-meta">{match.group_name
+          ?(onGroupClick
+            ?<button className="meta-link" onClick={()=>onGroupClick(match.group_name)}>Grupo {match.group_name} ↓</button>
+            :`Grupo ${match.group_name}`)
+          :match.stage}</div>
         <div className="match-time-str">{formatMatchTime(match.match_time)}</div>
         {locked?<span className="lock-badge locked">🔒 Cerrado</span>:soon?<span className="lock-badge soon">🔥 Cierra pronto</span>:<span className="lock-badge open">✅ Abierto</span>}
       </div>
       {soon&&!locked&&<Countdown matchTime={match.match_time}/>}
       <div className="match-body">
         {saved&&<div className="pick-saved-toast">✓ Pick guardado</div>}
+        {locked&&!hasPick&&<div className="no-pick">⚠️ Sin pick — este partido cuenta 0 puntos</div>}
         <div className="teams">
           <div className="team"><span className="team-flag">{FLAGS[match.home_team]||'🏳️'}</span><div className="team-name">{match.home_team}</div></div>
           <div className="vs">VS</div>
@@ -1252,6 +1281,7 @@ function PredictionsTab({prediction,savePrediction,locked,octavosStart}){
       {TEAM_PREDS.map(p=>(
         <div key={p.key} className="pred-card">
           <div className="pred-head"><span className="pred-label">{p.label}</span><span className="pred-pts">{p.pts} pts</span></div>
+          {locked&&!(prediction&&prediction[p.key])&&<div className="no-pick" style={{marginBottom:8}}>⚠️ Sin predicción — 0 puntos</div>}
           <select className="pred-select" disabled={locked} value={(prediction&&prediction[p.key])||''} onChange={e=>savePrediction(p.key,e.target.value)}>
             <option value="">— Elige selección —</option>
             {ALL_TEAMS.map(t=><option key={t} value={t}>{(FLAGS[t]||'')+' '+t}</option>)}
@@ -1262,6 +1292,7 @@ function PredictionsTab({prediction,savePrediction,locked,octavosStart}){
       {PLAYER_PREDS.map(p=>(
         <div key={p.key} className="pred-card">
           <div className="pred-head"><span className="pred-label">{p.label}</span><span className="pred-pts">{p.pts} pts</span></div>
+          {locked&&!(prediction&&prediction[p.key])&&<div className="no-pick" style={{marginBottom:8}}>⚠️ Sin predicción — 0 puntos</div>}
           <PlayerPicker value={(prediction&&prediction[p.key])||''} locked={locked} gkOnly={p.key==='clean_sheets'} onChange={v=>savePrediction(p.key,v)}/>
         </div>
       ))}
