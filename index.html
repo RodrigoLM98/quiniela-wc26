@@ -470,7 +470,7 @@ function App(){
   const[paymentProcessing,setPaymentProcessing]=useState(false);
   const[paymentError,setPaymentError]=useState('');
   const[pendingSessionId]=useState(()=>{try{const p=new URLSearchParams(window.location.search);return(p.get('payment')==='success'&&p.get('session_id'))?p.get('session_id'):null;}catch(_){return null;}});
-  const[joinCode]=useState(()=>{try{const p=new URLSearchParams(window.location.search);const c=p.get('join');return c?c.toUpperCase():null;}catch(_){return null;}});
+  const[joinCode,setJoinCode]=useState(()=>{try{const p=new URLSearchParams(window.location.search);const c=p.get('join');return c?c.toUpperCase():null;}catch(_){return null;}});
   const[editingName,setEditingName]=useState(false);
   const[nameInput,setNameInput]=useState('');
   const[savingName,setSavingName]=useState(false);
@@ -817,7 +817,7 @@ function App(){
       </div>
     </div>
   );
-  if(!currentGroup&&!isAdmin)return<GroupSelectionScreen user={user} profile={profile} myGroups={myGroups} joinCode={joinCode} onGroupSelected={async(g)=>{await loadGroupMembers(g.id);setCurrentGroup(g);}}/>;
+  if(!currentGroup&&!isAdmin)return<GroupSelectionScreen user={user} profile={profile} myGroups={myGroups} joinCode={joinCode} onJoinCodeUsed={()=>setJoinCode(null)} onGroupSelected={async(g)=>{await loadGroupMembers(g.id);setCurrentGroup(g);}}/>;
   const myPoints=Object.values(picks).reduce((acc,pick)=>{const match=matches.find(m=>m.id===pick.match_id);if(!match||match.home_score==null)return acc;return acc+calcPoints(pick,match);},0);
   const myPredPoints=calcPredictionPoints(prediction,predResults);
   const octavosTimes=matches.filter(m=>m.stage==='Octavos').map(m=>new Date(m.match_time).getTime());
@@ -894,7 +894,7 @@ function App(){
   );
 }
 
-function GroupSelectionScreen({user,profile,myGroups,joinCode,onGroupSelected}){
+function GroupSelectionScreen({user,profile,myGroups,joinCode,onGroupSelected,onJoinCodeUsed}){
   const[mode,setMode]=useState('select');
   const[groupName,setGroupName]=useState('');
   const[inviteCode,setInviteCode]=useState(joinCode||'');
@@ -902,6 +902,7 @@ function GroupSelectionScreen({user,profile,myGroups,joinCode,onGroupSelected}){
   const[loading,setLoading]=useState(false);
   const[error,setError]=useState('');
   const[autoJoining,setAutoJoining]=useState(!!joinCode);
+  function handleGroupSelected(g){onJoinCodeUsed&&onJoinCodeUsed();handleGroupSelected(g);}
   useEffect(()=>{
     if(joinCode){handleJoin(joinCode).finally(()=>setAutoJoining(false));}
   // eslint-disable-next-line
@@ -915,7 +916,7 @@ function GroupSelectionScreen({user,profile,myGroups,joinCode,onGroupSelected}){
         const fr=await fetch('/api/create-free-group',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({groupName:groupName.trim(),userId:user.id,promoCode:promoCode.trim()})});
         const{group,error:freeErr}=await fr.json();
         if(freeErr)throw new Error(freeErr);
-        onGroupSelected(group);
+        handleGroupSelected(group);
         return;
       }
       localStorage.setItem('wc26_pending_group',JSON.stringify({groupName:groupName.trim(),userId:user.id}));
@@ -936,7 +937,7 @@ function GroupSelectionScreen({user,profile,myGroups,joinCode,onGroupSelected}){
       const{error:joinErr}=await sb.from('group_members').insert({group_id:group.id,user_id:user.id});
       if(joinErr){setError(joinErr.message);setLoading(false);return;}
     }
-    onGroupSelected(group);
+    handleGroupSelected(group);
   }
   const btnBase={flex:1,padding:12,borderRadius:8,border:'1px solid var(--border)',background:'var(--surface2)',color:'var(--text)',fontFamily:'DM Sans,sans-serif',fontSize:'0.95rem',fontWeight:600,cursor:'pointer'};
   if(autoJoining)return(
@@ -953,7 +954,7 @@ function GroupSelectionScreen({user,profile,myGroups,joinCode,onGroupSelected}){
         {mode==='select'&&<>
           {myGroups.length>0&&<div style={{marginBottom:'1.25rem'}}>
             {myGroups.map(g=>(
-              <button key={g.id} onClick={()=>onGroupSelected(g)}
+              <button key={g.id} onClick={()=>handleGroupSelected(g)}
                 style={{width:'100%',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:10,padding:'14px 16px',marginBottom:8,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between',color:'var(--text)',fontFamily:'DM Sans,sans-serif',transition:'all 0.15s'}}
                 onMouseOver={e=>{e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.background='rgba(232,255,71,0.04)';}}
                 onMouseOut={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.background='var(--surface2)';}}>
@@ -1106,7 +1107,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v3.4</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v3.5</p>
     </div></div>
   );
 }
