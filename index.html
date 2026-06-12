@@ -902,7 +902,7 @@ function GroupSelectionScreen({user,profile,myGroups,joinCode,onGroupSelected,on
   const[loading,setLoading]=useState(false);
   const[error,setError]=useState('');
   const[autoJoining,setAutoJoining]=useState(!!joinCode);
-  function handleGroupSelected(g){onJoinCodeUsed&&onJoinCodeUsed();handleGroupSelected(g);}
+  function handleGroupSelected(g){onJoinCodeUsed&&onJoinCodeUsed();onGroupSelected(g);}
   useEffect(()=>{
     if(joinCode){handleJoin(joinCode).finally(()=>setAutoJoining(false));}
   // eslint-disable-next-line
@@ -1107,7 +1107,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v3.5</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v3.6</p>
     </div></div>
   );
 }
