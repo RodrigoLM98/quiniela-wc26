@@ -191,6 +191,10 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .rules-list li{font-size:0.8rem;color:#cdd6e2;padding:3px 0;line-height:1.45;}
 .meta-link{background:none;border:none;color:var(--accent2);font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;cursor:pointer;padding:0;text-decoration:underline;text-underline-offset:3px;}
 .no-pick{background:rgba(255,71,87,0.08);border:1px solid rgba(255,71,87,0.22);border-radius:8px;padding:7px 12px;font-size:0.78rem;color:#ff8a94;font-weight:600;margin-bottom:10px;text-align:center;}
+.mv-badge{display:inline-block;font-size:0.7rem;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:0.3px;}
+.mv-up{background:rgba(16,185,129,0.15);color:#10b981;}
+.mv-down{background:rgba(255,71,87,0.15);color:#ff4757;}
+.mv-same{background:rgba(139,151,168,0.12);color:var(--muted);}
 .check-row{display:flex;align-items:flex-start;gap:10px;font-size:0.82rem;color:var(--muted);margin-bottom:10px;cursor:pointer;line-height:1.4;text-transform:none;letter-spacing:0;}
 .check-row input{margin-top:2px;width:16px;height:16px;flex:0 0 auto;accent-color:var(--accent);cursor:pointer;}
 .check-row a{color:var(--accent);text-decoration:underline;}
@@ -453,6 +457,7 @@ function App(){
   const[justSaved,setJustSaved]=useState(null);
   const[adminScores,setAdminScores]=useState({});
   const[adminSaving,setAdminSaving]=useState(null);
+  const[snapshots,setSnapshots]=useState([]);
   const[rankingsLoading,setRankingsLoading]=useState(false);
   const[selectedGroup,setSelectedGroup]=useState('A');
   const[showOnboarding,setShowOnboarding]=useState(false);
@@ -574,16 +579,18 @@ function App(){
   async function loadRankings(){
     setRankingsLoading(true);
     const ids=groupMembers.length>0?groupMembers:null;
-    const[ap,allPred,prof,resWrap]=await Promise.all([
+    const[ap,allPred,prof,resWrap,snapWrap]=await Promise.all([
       fetchAllRows('picks','user_id',ids),
       fetchAllRows('predictions','user_id',ids),
       fetchAllRows('profiles','id',ids),
-      sb.from('prediction_results').select('*').eq('id',1).maybeSingle()
+      sb.from('prediction_results').select('*').eq('id',1).maybeSingle(),
+      sb.from('ranking_snapshots').select('*').order('snapshot_at',{ascending:false}).limit(500)
     ]);
     if(ap)setAllPicks(ap);
     if(prof&&prof.length)setProfiles(prof);
     if(allPred)setAllPredictions(allPred);
     if(resWrap&&resWrap.data)setPredResults(resWrap.data);
+    if(snapWrap&&snapWrap.data)setSnapshots(snapWrap.data);
     setRankingsLoading(false);
   }
   async function loadPrediction(uid){const{data}=await sb.from('predictions').select('*').eq('user_id',uid).maybeSingle();if(data)setPrediction(data);}
@@ -641,8 +648,21 @@ function App(){
     const us={};profiles.filter(p=>groupMembers.length===0||groupMembers.includes(p.id)).forEach(p=>{us[p.id]={profile:p,pts:0,correct:0,total:0};});
     allPicks.forEach(pick=>{const match=mm[pick.match_id];if(!match||match.home_score==null||!us[pick.user_id])return;const pts=calcPoints(pick,match);us[pick.user_id].pts+=pts;if(pts>=3)us[pick.user_id].correct+=1;us[pick.user_id].total+=1;});
     allPredictions.forEach(pred=>{if(!us[pred.user_id])return;us[pred.user_id].pts+=calcPredictionPoints(pred,predResults);});
-    return Object.values(us).sort((a,b)=>b.pts-a.pts);
-  },[matches,allPicks,profiles,allPredictions,predResults,groupMembers]);
+    const sorted=Object.values(us).sort((a,b)=>b.pts-a.pts);
+    // Calcular movimiento respecto al último snapshot
+    if(snapshots.length>0){
+      const latestAt=snapshots[0].snapshot_at;
+      const latestSnap=snapshots.filter(r=>r.snapshot_at===latestAt);
+      const snapMap={};latestSnap.forEach(r=>{snapMap[r.user_id]=r.position;});
+      const snapMatch=matches.find(m=>String(m.id)===String(latestSnap[0]?.match_id));
+      sorted.forEach((entry,i)=>{
+        const prev=snapMap[entry.profile.id];
+        entry.move=prev!=null?prev-(i+1):null;
+        entry.snapMatchLabel=snapMatch?`${snapMatch.home_team} ${snapMatch.home_score}–${snapMatch.away_score} ${snapMatch.away_team}`:'último resultado';
+      });
+    }
+    return sorted;
+  },[matches,allPicks,profiles,allPredictions,predResults,groupMembers,snapshots]);
 
   const[registerSuccess,setRegisterSuccess]=useState('');
   async function handleAuth(e,email,password,username){
@@ -712,8 +732,21 @@ function App(){
     const hs=parseInt(s.home,10),as=parseInt(s.away,10);
     if(!Number.isFinite(hs)||!Number.isFinite(as)||hs<0||as<0){alert('Ingresa marcadores válidos (números mayores o iguales a 0).');return;}
     setAdminSaving(matchId);
+    // Snapshot del ranking actual ANTES de guardar el resultado
+    const currentRanking=getRankings();
+    if(currentRanking.length>0){
+      const snapshotRows=currentRanking.map((entry,i)=>({
+        user_id:entry.profile.id,
+        position:i+1,
+        pts:entry.pts,
+        match_id:matchId,
+        snapshot_at:new Date().toISOString()
+      }));
+      await sb.from('ranking_snapshots').insert(snapshotRows);
+    }
     await sb.from('matches').update({home_score:hs,away_score:as,status:'finished'}).eq('id',matchId);
     setMatches(prev=>prev.map(m=>m.id===matchId?{...m,home_score:hs,away_score:as,status:'finished'}:m));
+    await loadRankings();
     setAdminSaving(null);
   }
 
@@ -852,7 +885,7 @@ function App(){
             )}
           </div>
         )}
-        {tab==='rankings'&&<RankingsTab rankings={getRankings()} userId={user.id} loading={rankingsLoading} onRefresh={loadRankings} groupName={currentGroup?currentGroup.name:'Global'}/>}
+        {tab==='rankings'&&<RankingsTab rankings={getRankings()} userId={user.id} loading={rankingsLoading} onRefresh={loadRankings} groupName={currentGroup?currentGroup.name:'Global'} snapshots={snapshots}/>}
         {tab==='predicciones'&&<PredictionsTab prediction={prediction} savePrediction={savePrediction} locked={predLocked} octavosStart={octavosStart}/>}
         {tab==='admin'&&isAdmin&&<AdminTab matches={matches} adminScores={adminScores} setAdminScores={setAdminScores} saveAdminScore={saveAdminScore} adminSaving={adminSaving} predResults={predResults} savePredResult={savePredResult}/>}
       </main>
@@ -1073,7 +1106,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v3.3</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v3.4</p>
     </div></div>
   );
 }
@@ -1181,11 +1214,21 @@ const MatchCard=React.memo(function MatchCard({match,pick,savePick,saved,onGroup
   );
 });
 
+function MoveBadge({move}){
+  if(move==null)return null;
+  if(move>0)return<span className="mv-badge mv-up">▲ {move}</span>;
+  if(move<0)return<span className="mv-badge mv-down">▼ {Math.abs(move)}</span>;
+  return<span className="mv-badge mv-same">—</span>;
+}
+
 function RankingsTab({rankings,userId,loading,onRefresh,groupName}){
   if(loading)return<div className="loading"><div className="spinner"/><span>Cargando ranking...</span></div>;
+  const hasMovement=rankings.some(e=>e.move!=null);
+  const snapLabel=rankings.find(e=>e.snapMatchLabel)?.snapMatchLabel;
   return(
     <div>
       <div className="tab-section"><div style={{flex:1}}><div className="section-title" style={{marginBottom:2}}>RANKING</div>{groupName&&<div style={{fontSize:'0.75rem',color:'var(--accent2)',fontWeight:600,letterSpacing:0.5,marginBottom:'0.5rem',textTransform:'uppercase'}}>{groupName}</div>}</div><button className="refresh-btn" onClick={onRefresh}>↻ Actualizar</button></div>
+      {hasMovement&&snapLabel&&<div style={{fontSize:'0.72rem',color:'var(--muted)',textAlign:'center',marginBottom:'0.75rem',padding:'6px 12px',background:'rgba(255,255,255,0.03)',borderRadius:8}}>Movimiento tras: <strong style={{color:'var(--text)'}}>{snapLabel}</strong></div>}
       {rankings.length===0&&<div className="empty-state">¡Haz tus picks para aparecer en el ranking!</div>}
       {rankings.map((entry,i)=>{
         const pos=i+1,isMe=entry.profile.id===userId,color=getAvatarColor(entry.profile.username);
@@ -1197,7 +1240,8 @@ function RankingsTab({rankings,userId,loading,onRefresh,groupName}){
               <div className="rank-name">{entry.profile.username}{isMe&&<span style={{fontSize:'0.7rem',color:'var(--accent)',marginLeft:6}}>← tú</span>}</div>
               <div className="rank-sub">{entry.correct} correctos · {entry.total} jugados</div>
             </div>
-            <div style={{textAlign:'right'}}>
+            <div style={{textAlign:'right',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:2}}>
+              <MoveBadge move={entry.move}/>
               <div className="rank-points">{entry.pts}</div>
               <div className="pts-label">puntos</div>
             </div>
