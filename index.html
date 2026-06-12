@@ -559,7 +559,33 @@ function App(){
   }
   async function loadMatches(){const{data}=await sb.from('matches').select('*').order('match_time');if(data&&data.length>0)setMatches(data);}
   async function loadMyPicks(uid){const{data}=await sb.from('picks').select('*').eq('user_id',uid);if(data){const map={};data.forEach(p=>{map[p.match_id]=p;});setPicks(map);}}
-  async function loadRankings(){setRankingsLoading(true);const[{data:ap},{data:pr},{data:allPred},{data:res}]=await Promise.all([sb.from('picks').select('*'),sb.from('profiles').select('*'),sb.from('predictions').select('*'),sb.from('prediction_results').select('*').eq('id',1).maybeSingle()]);if(ap)setAllPicks(ap);if(pr)setProfiles(pr);if(allPred)setAllPredictions(allPred);if(res)setPredResults(res);setRankingsLoading(false);}
+  async function fetchAllRows(table,col,ids){
+    const out=[];const B=1000;
+    for(let from=0;;from+=B){
+      let q=sb.from(table).select('*');
+      if(ids&&ids.length>0)q=q.in(col,ids);
+      const{data,error}=await q.range(from,from+B-1);
+      if(error||!data)break;
+      out.push(...data);
+      if(data.length<B)break;
+    }
+    return out;
+  }
+  async function loadRankings(){
+    setRankingsLoading(true);
+    const ids=groupMembers.length>0?groupMembers:null;
+    const[ap,allPred,prof,resWrap]=await Promise.all([
+      fetchAllRows('picks','user_id',ids),
+      fetchAllRows('predictions','user_id',ids),
+      fetchAllRows('profiles','id',ids),
+      sb.from('prediction_results').select('*').eq('id',1).maybeSingle()
+    ]);
+    if(ap)setAllPicks(ap);
+    if(prof&&prof.length)setProfiles(prof);
+    if(allPred)setAllPredictions(allPred);
+    if(resWrap&&resWrap.data)setPredResults(resWrap.data);
+    setRankingsLoading(false);
+  }
   async function loadPrediction(uid){const{data}=await sb.from('predictions').select('*').eq('user_id',uid).maybeSingle();if(data)setPrediction(data);}
   async function loadPredResults(){const{data}=await sb.from('prediction_results').select('*').eq('id',1).maybeSingle();if(data)setPredResults(data);}
   async function loadMyGroups(uid){
@@ -1047,7 +1073,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v3.2</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v3.3</p>
     </div></div>
   );
 }
