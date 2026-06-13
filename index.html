@@ -732,18 +732,10 @@ function App(){
     const hs=parseInt(s.home,10),as=parseInt(s.away,10);
     if(!Number.isFinite(hs)||!Number.isFinite(as)||hs<0||as<0){alert('Ingresa marcadores válidos (números mayores o iguales a 0).');return;}
     setAdminSaving(matchId);
-    // Snapshot del ranking actual ANTES de guardar el resultado
-    const currentRanking=getRankings();
-    if(currentRanking.length>0){
-      const snapshotRows=currentRanking.map((entry,i)=>({
-        user_id:entry.profile.id,
-        position:i+1,
-        pts:entry.pts,
-        match_id:matchId,
-        snapshot_at:new Date().toISOString()
-      }));
-      await sb.from('ranking_snapshots').insert(snapshotRows);
-    }
+    // Snapshot vía SQL para que no dependa del estado del cliente
+    await sb.rpc('take_ranking_snapshot',{p_match_id:matchId}).then(({error})=>{
+      if(error)console.warn('Snapshot warning:',error.message);
+    });
     await sb.from('matches').update({home_score:hs,away_score:as,status:'finished'}).eq('id',matchId);
     setMatches(prev=>prev.map(m=>m.id===matchId?{...m,home_score:hs,away_score:as,status:'finished'}:m));
     await loadRankings();
@@ -1107,7 +1099,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v3.6</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v3.7</p>
     </div></div>
   );
 }
