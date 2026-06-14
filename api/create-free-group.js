@@ -1,23 +1,33 @@
 const { createClient } = require('@supabase/supabase-js');
 
+const ALLOWED_ORIGIN = 'https://www.wc26pool.com';
+
 function generateCode() {
   return Math.random().toString(36).substr(2, 8).toUpperCase();
 }
 
 module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin || '';
+  if (origin === ALLOWED_ORIGIN) {
+    res.setHeader('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Vary', 'Origin');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Rechazar peticiones de orígenes no permitidos
+  if (origin && origin !== ALLOWED_ORIGIN) {
+    return res.status(403).json({ error: 'Origen no permitido.' });
+  }
 
   const { groupName, userId, promoCode } = req.body || {};
   if (!groupName || !userId) {
     return res.status(400).json({ error: 'Faltan campos requeridos' });
   }
 
-  // El código secreto vive SOLO en Vercel (env var PROMO_CODE), nunca en el HTML.
   if (!process.env.PROMO_CODE || promoCode !== process.env.PROMO_CODE) {
     return res.status(403).json({ error: 'Código promocional inválido.' });
   }
@@ -25,10 +35,9 @@ module.exports = async (req, res) => {
   try {
     const supabase = createClient(
       process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY // Service role: bypass RLS para crear grupo
+      process.env.SUPABASE_SERVICE_KEY
     );
 
-    // Generar código de invitación único
     let inviteCode = generateCode();
     for (let i = 0; i < 10; i++) {
       const { data: taken } = await supabase
@@ -37,7 +46,6 @@ module.exports = async (req, res) => {
       inviteCode = generateCode();
     }
 
-    // Crear el grupo (marcado como promo para distinguirlo en la base de datos)
     const { data: group, error: groupErr } = await supabase
       .from('groups')
       .insert({
@@ -52,7 +60,6 @@ module.exports = async (req, res) => {
 
     if (groupErr) throw groupErr;
 
-    // Agregar al dueño como primer miembro
     await supabase.from('group_members').insert({
       group_id: group.id,
       user_id: userId,
