@@ -1111,7 +1111,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v3.9</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v4.0</p>
     </div></div>
   );
 }
@@ -1152,16 +1152,15 @@ function PicksTab({matches,picks,savePick,justSaved,stageFilter,setStageFilter,o
   const filtered=matches.filter(m=>m.stage===stageFilter);
   const pickedCount=filtered.filter(m=>picks[m.id]?.result&&picks[m.id]?.goals!=null).length;
   const pct=filtered.length>0?Math.round((pickedCount/filtered.length)*100):0;
-  // Día de hoy en CDMX, recalculado en cada render (siempre actual)
-  const todayStr=new Date().toLocaleDateString('es-MX',{timeZone:'America/Mexico_City'});
+  // Día de hoy en CDMX en formato ISO ordenable (aaaa-mm-dd), recalculado en cada render
+  const todayStr=new Date().toLocaleDateString('en-CA',{timeZone:'America/Mexico_City'});
   const byDate=filtered.reduce((acc,m)=>{
     const dObj=new Date(m.match_time);
     const d=dObj.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});
     const key=d.charAt(0).toUpperCase()+d.slice(1);
-    if(!acc[key])acc[key]={matches:[],dateStr:dObj.toLocaleDateString('es-MX',{timeZone:'America/Mexico_City'})};
+    if(!acc[key])acc[key]={matches:[],iso:dObj.toLocaleDateString('en-CA',{timeZone:'America/Mexico_City'})};
     acc[key].matches.push(m);return acc;
   },{});
-  const todayMS=new Date(todayStr).setHours(0,0,0,0);
   return(
     <div>
       <div className="tab-section"><div className="section-title">TUS PICKS</div></div>
@@ -1174,8 +1173,7 @@ function PicksTab({matches,picks,savePick,justSaved,stageFilter,setStageFilter,o
       {filtered.length===0
         ?<div className="empty-state">No hay partidos en esta fase aún</div>
         :Object.keys(byDate).map(d=>{
-          const dayMS=new Date(byDate[d].dateStr).setHours(0,0,0,0);
-          const isPast=dayMS<todayMS;
+          const isPast=byDate[d].iso<todayStr;
           return<DayGroup key={d} label={d} matches={byDate[d].matches} picks={picks} savePick={savePick} justSaved={justSaved} onGroupClick={stageFilter==='Grupos'?scrollToStandings:null} isPast={isPast} defaultOpen={!isPast}/>;
         })
       }
