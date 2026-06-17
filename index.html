@@ -534,6 +534,53 @@ function App(){
     return()=>{document.removeEventListener('visibilitychange',onVis);window.removeEventListener('focus',onVis);};
   },[user&&user.id]);
 
+  // Auto-registro de resultados: revisa partidos que terminan pronto.
+  // Solo programa partidos dentro de las próximas ~4h para evitar el overflow de setTimeout
+  // y desperdicio de llamadas. Re-evalúa al refrescar matches o volver a la app.
+  useEffect(()=>{
+    if(!user||!matches.length)return;
+    const OFFSETS=[110,115,120,135,145,160].map(m=>m*60*1000);
+    const now=Date.now();
+    const WINDOW=4*60*60*1000; // solo partidos cuyo kickoff fue hace <4h o será en <30min
+    const timers=[];
+    matches.forEach(match=>{
+      if(match.home_score!=null)return; // ya tiene resultado oficial
+      const kickoff=new Date(match.match_time).getTime();
+      const sinceKickoff=now-kickoff;
+      // Solo si el partido empezó hace menos de 4h (o está por empezar en <30min)
+      if(sinceKickoff>WINDOW||sinceKickoff< -30*60*1000)return;
+      OFFSETS.forEach((offset,idx)=>{
+        const fireAt=kickoff+offset;
+        let delay=fireAt-now;
+        if(delay<0){
+          // Ventana ya pasó pero el partido sigue sin resultado:
+          // solo el PRIMER offset vencido dispara (los demás se saltan para no duplicar)
+          if(idx>0&&(now-(kickoff+OFFSETS[idx-1]))>0)return;
+          delay=2000+Math.random()*4000; // pequeño jitter para no chocar entre usuarios
+        }else{
+          delay+=Math.random()*8000; // jitter 0-8s para dispersar llamadas entre usuarios
+        }
+        if(delay>WINDOW)return; // seguridad extra anti-overflow
+        const t=setTimeout(async()=>{
+          try{
+            const res=await fetch('/api/sync-scores',{
+              method:'POST',headers:{'Content-Type':'application/json'},
+              body:JSON.stringify({matchId:match.id})
+            });
+            if(res.status===429){console.warn('sync-scores: límite de API alcanzado');return;}
+            const data=await res.json();
+            if(data.finished){
+              await loadMatches();
+              timers.filter(x=>x.matchId===match.id&&x.idx>idx).forEach(x=>clearTimeout(x.ref));
+            }
+          }catch(e){console.warn('sync-scores:',e.message);}
+        },delay);
+        timers.push({ref:t,matchId:match.id,idx});
+      });
+    });
+    return()=>timers.forEach(x=>clearTimeout(x.ref));
+  },[user&&user.id,matches.map(m=>m.id+':'+(m.home_score==null?'0':'1')).join()]);
+
   useEffect(()=>{
     if(!user||!pendingSessionId)return;
     const pending=JSON.parse(localStorage.getItem('wc26_pending_group')||'{}');
@@ -1111,7 +1158,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v4.3</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v4.7</p>
     </div></div>
   );
 }
@@ -1195,7 +1242,7 @@ const MatchCard=React.memo(function MatchCard({match,pick,savePick,saved,onGroup
             :`Grupo ${match.group_name}`)
           :match.stage}</div>
         <div className="match-time-str">{formatMatchTime(match.match_time)}</div>
-        {locked?<span className="lock-badge locked">🔒 Cerrado</span>:soon?<span className="lock-badge soon">🔥 Cierra pronto</span>:<span className="lock-badge open">✅ Abierto</span>}
+        <span className={`lock-badge ${locked?'locked':soon?'soon':'open'}`}>{locked?'🔒 Cerrado':soon?'🔥 Cierra pronto':'✅ Abierto'}</span>
       </div>
       {soon&&!locked&&<Countdown matchTime={match.match_time}/>}
       <div className="match-body">
