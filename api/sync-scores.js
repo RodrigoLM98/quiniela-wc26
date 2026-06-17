@@ -87,21 +87,60 @@ module.exports = async (req, res) => {
       const data = await apiGet(`/fixtures?id=${match.api_fixture_id}`, API_KEY);
       fixtureData = data.response?.[0] || null;
     } else {
-      // First time — find by date and team names, save fixture ID for future calls
-      const matchDate = new Date(match.match_time).toISOString().split('T')[0];
-      const data = await apiGet(
-        `/fixtures?league=${WC2026_LEAGUE}&season=${WC2026_SEASON}&date=${matchDate}`,
-        API_KEY
-      );
+      // First time — find by team names across a 3-day window (handles midnight/timezone).
+      const norm = (x) => (x||'').toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // strip accents
+        .replace(/[^a-z0-9]/g,'').trim();
+
       const homeEn = TEAM_MAP[match.home_team];
       const awayEn = TEAM_MAP[match.away_team];
-      fixtureData = (data.response || []).find(f => {
-        const h = f.teams?.home?.name || '';
-        const a = f.teams?.away?.name || '';
-        return (h === homeEn && a === awayEn) ||
-               (h.includes(homeEn) || homeEn?.includes(h)) &&
-               (a.includes(awayEn) || awayEn?.includes(a));
-      }) || null;
+      const homeN = norm(homeEn);
+      const awayN = norm(awayEn);
+
+      // Build 3-day window around the match (UTC day-1, day, day+1)
+      const baseDate = new Date(match.match_time);
+      const dates = [-1,0,1].map(off => {
+        const d = new Date(baseDate);
+        d.setUTCDate(d.getUTCDate()+off);
+        return d.toISOString().split('T')[0];
+      });
+
+      let allFixtures = [];
+      for (const dt of dates) {
+        const data = await apiGet(
+          `/fixtures?league=${WC2026_LEAGUE}&season=${WC2026_SEASON}&date=${dt}`,
+          API_KEY
+        );
+        allFixtures.push(...(data.response || []));
+      }
+
+      const matchFn = (f) => {
+        const h = norm(f.teams?.home?.name);
+        const a = norm(f.teams?.away?.name);
+        return (h===homeN && a===awayN) ||
+               (h.includes(homeN)||homeN.includes(h)) && (a.includes(awayN)||awayN.includes(a));
+      };
+      fixtureData = allFixtures.find(matchFn) || null;
+
+      // DIAGNOSTIC: if not found, return what the API actually saw
+      if (!fixtureData) {
+        return res.json({
+          finished: false,
+          reason: 'Partido no encontrado en API',
+          diagnostic: {
+            buscando: { home: match.home_team, away: match.away_team, homeEn, awayEn },
+            datesSearched: dates,
+            apiReturnedCount: allFixtures.length,
+            apiFixtures: allFixtures.slice(0,30).map(f => ({
+              id: f.fixture?.id,
+              home: f.teams?.home?.name,
+              away: f.teams?.away?.name,
+              status: f.fixture?.status?.short,
+              date: f.fixture?.date,
+            })),
+          }
+        });
+      }
 
       // Save fixture ID so next calls are direct
       if (fixtureData?.fixture?.id) {
