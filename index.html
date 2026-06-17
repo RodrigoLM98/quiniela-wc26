@@ -218,7 +218,7 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
   .nav::-webkit-scrollbar{display:none;}
   .nav-btn{flex:0 0 auto;white-space:nowrap;padding:7px 14px;}
 }
-@media(max-width:600px){.group-badge{display:none;}}
+@media(max-width:600px){.group-badge{font-size:0.65rem;padding:3px 8px;max-width:110px;}}
 </style>
 </head>
 <body>
@@ -289,7 +289,7 @@ const GOALKEEPERS={
 function isLocked(mt){return new Date()>=new Date(new Date(mt).getTime()-60*60*1000);}
 function getTimeUntilLock(mt){return new Date(new Date(mt).getTime()-60*60*1000)-new Date();}
 function isClosingSoon(mt){const d=getTimeUntilLock(mt);return d>0&&d<6*60*60*1000;}
-function formatMatchTime(mt){const d=new Date(mt);return d.toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short'})+' · '+d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});}
+function formatMatchTime(mt){const d=new Date(mt);return d.toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short',timeZone:'America/Mexico_City'})+' · '+d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',timeZone:'America/Mexico_City'});}
 function getAvatarColor(name){const s=name||'?';const c=['#e8ff47','#00d4ff','#ff6b9d','#7c3aed','#f59e0b','#10b981'];let h=0;for(let x of s)h=(h*31+x.charCodeAt(0))%c.length;return c[h];}
 function getInitials(name){return (name||'?').split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2)||'?';}
 function calcPoints(pick,match){
@@ -1111,7 +1111,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v4.0</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v4.2</p>
     </div></div>
   );
 }
@@ -1391,7 +1391,27 @@ function PredictionsTab({prediction,savePrediction,locked,octavosStart}){
   );
 }
 
-ReactDOM.render(<App/>, document.getElementById('root'));
+class ErrorBoundary extends React.Component{
+  constructor(props){super(props);this.state={crashed:false,msg:''};}
+  static getDerivedStateFromError(e){return{crashed:true,msg:e.message||String(e)};}
+  componentDidCatch(e,info){console.error('App crash:',e,info);}
+  render(){
+    if(this.state.crashed)return(
+      <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'#0a0e14',color:'#e8edf4',padding:'2rem',textAlign:'center'}}>
+        <div style={{fontSize:'2.5rem',marginBottom:'1rem'}}>⚽</div>
+        <div style={{fontFamily:'Bebas Neue,sans-serif',fontSize:'1.8rem',letterSpacing:2,marginBottom:'0.75rem'}}>TRIVIA MUNDIALISTA</div>
+        <div style={{color:'#8b97a8',marginBottom:'1.5rem',fontSize:'0.9rem'}}>Ocurrió un error inesperado. Por favor recarga la página.</div>
+        <button onClick={()=>window.location.reload()} style={{background:'#e8ff47',color:'#0a0e14',border:'none',borderRadius:10,padding:'12px 28px',fontFamily:'DM Sans,sans-serif',fontWeight:700,fontSize:'1rem',cursor:'pointer'}}>🔄 Recargar app</button>
+        <details style={{marginTop:'1.5rem',color:'#8b97a8',fontSize:'0.7rem',maxWidth:400}}>
+          <summary style={{cursor:'pointer'}}>Detalle del error</summary>
+          <pre style={{marginTop:8,textAlign:'left',whiteSpace:'pre-wrap',wordBreak:'break-all'}}>{this.state.msg}</pre>
+        </details>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+ReactDOM.render(<ErrorBoundary><App/></ErrorBoundary>, document.getElementById('root'));
 </script>
 </body>
 </html>
