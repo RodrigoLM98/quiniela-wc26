@@ -52,8 +52,25 @@ module.exports = async (req, res) => {
   const API_KEY = process.env.APIFOOTBALL_KEY;
   if (!API_KEY) return res.status(500).json({ error: 'API key no configurada' });
 
-  const { matchId } = req.body || {};
+  const { matchId, debug } = req.body || {};
   if (!matchId) return res.status(400).json({ error: 'matchId requerido' });
+
+  // RAW DIAGNOSTIC: inspect exactly what API-Football returns
+  if (debug) {
+    try {
+      const r1 = await fetch(`${API_BASE}/fixtures?league=1&season=2026&date=2026-06-16`, { headers: { 'x-apisports-key': API_KEY } });
+      const j1 = await r1.json();
+      const r2 = await fetch(`${API_BASE}/status`, { headers: { 'x-apisports-key': API_KEY } });
+      const j2 = await r2.json();
+      return res.json({
+        debug: true,
+        fixtures_query: { httpStatus: r1.status, results: j1.results, errors: j1.errors, sample: (j1.response||[]).slice(0,3).map(f=>({home:f.teams?.home?.name,away:f.teams?.away?.name,date:f.fixture?.date})) },
+        account_status: { httpStatus: r2.status, response: j2.response, errors: j2.errors },
+      });
+    } catch (e) {
+      return res.json({ debug: true, error: e.message });
+    }
+  }
 
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
