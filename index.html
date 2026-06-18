@@ -1111,7 +1111,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v4.8</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v4.9</p>
     </div></div>
   );
 }
@@ -1276,6 +1276,14 @@ function RankingsTab({rankings,userId,loading,onRefresh,groupName}){
 function AdminTab({matches,adminScores,setAdminScores,saveAdminScore,adminSaving,predResults,savePredResult}){
   const[filter,setFilter]=useState('Grupos');
   const filtered=matches.filter(m=>m.stage===filter);
+  const todayStr=new Date().toLocaleDateString('en-CA',{timeZone:'America/Mexico_City'});
+  const byDate=filtered.reduce((acc,m)=>{
+    const dObj=new Date(m.match_time);
+    const d=dObj.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});
+    const key=d.charAt(0).toUpperCase()+d.slice(1);
+    if(!acc[key])acc[key]={matches:[],iso:dObj.toLocaleDateString('en-CA',{timeZone:'America/Mexico_City'})};
+    acc[key].matches.push(m);return acc;
+  },{});
   return(
     <div>
       <div className="section-title">ADMIN — RESULTADO DE PREDICCIONES</div>
@@ -1296,10 +1304,35 @@ function AdminTab({matches,adminScores,setAdminScores,saveAdminScore,adminSaving
       </div>
       <div className="section-title">ADMIN — RESULTADOS DE PARTIDOS</div>
       <div className="stage-filter" style={{marginBottom:'1.25rem'}}>{STAGES.map(s=><button key={s} className={`stage-btn ${filter===s?'active':''}`} onClick={()=>setFilter(s)}>{s}</button>)}</div>
-      <div className="admin-grid">
-        {filtered.map(match=>(
+      {Object.keys(byDate).map(d=>{
+        const isPast=byDate[d].iso<todayStr;
+        const dayMatches=byDate[d].matches;
+        const done=dayMatches.filter(m=>m.home_score!=null).length;
+        return(
+          <AdminDayGroup key={d} label={d} matches={dayMatches} isPast={isPast} defaultOpen={!isPast}
+            done={done} adminScores={adminScores} setAdminScores={setAdminScores}
+            saveAdminScore={saveAdminScore} adminSaving={adminSaving}/>
+        );
+      })}
+    </div>
+  );
+}
+
+function AdminDayGroup({label,matches,isPast,defaultOpen,done,adminScores,setAdminScores,saveAdminScore,adminSaving}){
+  const[open,setOpen]=useState(defaultOpen);
+  return(
+    <div className={`day-group ${isPast?'past':''}`} style={{marginBottom:'0.75rem'}}>
+      <button className="day-head" onClick={()=>setOpen(o=>!o)}>
+        <span>{isPast?'✓ ':'📅 '}{label}</span>
+        <span className="day-head-right">
+          <span className="day-count">{done}/{matches.length}</span>
+          <span className="day-caret">{open?'▲':'▼'}</span>
+        </span>
+      </button>
+      {open&&<div className="admin-grid" style={{marginTop:'0.5rem'}}>
+        {matches.map(match=>(
           <div key={match.id} className="admin-card">
-            <div className="admin-card-title">{match.group_name?`Grupo ${match.group_name}`:match.stage} · {new Date(match.match_time).toLocaleDateString('es-MX',{day:'numeric',month:'short'})}</div>
+            <div className="admin-card-title">{match.group_name?`Grupo ${match.group_name}`:match.stage} · {new Date(match.match_time).toLocaleDateString('es-MX',{day:'numeric',month:'short',timeZone:'America/Mexico_City'})}</div>
             <div className="admin-teams">
               <span>{FLAGS[match.home_team]||'🏳️'}</span>
               <span className="admin-team-name">{match.home_team}</span>
@@ -1316,7 +1349,7 @@ function AdminTab({matches,adminScores,setAdminScores,saveAdminScore,adminSaving
             </div>
           </div>
         ))}
-      </div>
+      </div>}
     </div>
   );
 }
