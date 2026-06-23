@@ -1236,7 +1236,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v5.2</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v5.3</p>
     </div></div>
   );
 }
@@ -1368,8 +1368,8 @@ function MoveBadge({move}){
 }
 
 function RankingsTab({rankings,userId,loading,onRefresh,groupName,predDeadline}){
-  const[showIntro,setShowIntro]=useState(()=>{try{return!localStorage.getItem('wc26_pred_intro_seen');}catch(_){return false;}});
-  function closeIntro(){try{localStorage.setItem('wc26_pred_intro_seen','1');}catch(_){}setShowIntro(false);}
+  const[showIntro,setShowIntro]=useState(()=>{try{return!localStorage.getItem('wc26_pred_intro_seen_v2');}catch(_){return false;}});
+  function closeIntro(){try{localStorage.setItem('wc26_pred_intro_seen_v2','1');}catch(_){}setShowIntro(false);}
   if(loading)return<div className="loading"><div className="spinner"/><span>Cargando ranking...</span></div>;
   const hasMovement=rankings.some(e=>e.move!=null);
   const snapLabel=rankings.find(e=>e.snapMatchLabel)?.snapMatchLabel;
@@ -1569,8 +1569,8 @@ function PredictionsTab({prediction,savePrediction,locked,deadline}){
     {key:'clean_sheets',label:'🧤 Más arcos en cero',pts:12},
     {key:'assists',label:'🎯 Más asistencias',pts:12},
   ];
-  const[showIntro,setShowIntro]=useState(()=>{try{return!localStorage.getItem('wc26_pred_intro_seen');}catch(_){return false;}});
-  function closeIntro(){try{localStorage.setItem('wc26_pred_intro_seen','1');}catch(_){}setShowIntro(false);}
+  const[showIntro,setShowIntro]=useState(()=>{try{return!localStorage.getItem('wc26_pred_intro_seen_v2');}catch(_){return false;}});
+  function closeIntro(){try{localStorage.setItem('wc26_pred_intro_seen_v2','1');}catch(_){}setShowIntro(false);}
   const lockStr='28 de junio, antes de la 1:00 PM (hora CDMX)';
   return(
     <div style={{maxWidth:680,margin:'0 auto'}}>
