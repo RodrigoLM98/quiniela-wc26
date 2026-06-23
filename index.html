@@ -858,6 +858,7 @@ function App(){
   if(showOnboarding)return<OnboardingScreen username={profile.username} onDone={()=>setShowOnboarding(false)}/>;
 
   const isAdmin=user.email==='admin@quiniela2026.com'||profile.username==='admin';
+  const[forceGroupScreen,setForceGroupScreen]=useState(false);
   if(paymentProcessing||paymentError)return(
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)',padding:'1.5rem'}}>
       <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:'2.5rem',width:'100%',maxWidth:400,textAlign:'center'}}>
@@ -868,7 +869,7 @@ function App(){
       </div>
     </div>
   );
-  if(!currentGroup&&!isAdmin)return<GroupSelectionScreen user={user} profile={profile} myGroups={myGroups} joinCode={joinCode} onJoinCodeUsed={()=>setJoinCode(null)} onGroupSelected={async(g)=>{await loadGroupMembers(g.id);setCurrentGroup(g);}}/>;
+  if((!currentGroup&&!isAdmin)||forceGroupScreen)return<GroupSelectionScreen user={user} profile={profile} myGroups={myGroups} joinCode={joinCode} onJoinCodeUsed={()=>setJoinCode(null)} onGroupSelected={async(g)=>{await loadGroupMembers(g.id);setCurrentGroup(g);setForceGroupScreen(false);}}/>;
   const myPoints=Object.values(picks).reduce((acc,pick)=>{const match=matches.find(m=>m.id===pick.match_id);if(!match||match.home_score==null)return acc;return acc+calcPoints(pick,match);},0);
   const myPredPoints=calcPredictionPoints(prediction,predResults);
   const PRED_DEADLINE='2026-06-28T19:00:00+00:00'; // 28 jun 2026, 1:00 PM CDMX (1h antes del primer partido de 16avos)
@@ -902,9 +903,9 @@ function App(){
                   <div className="account-menu-head">{profile.username}{currentGroup&&<div style={{fontSize:'0.7rem',color:'var(--accent2)',fontWeight:600,marginTop:2}}>{currentGroup.name}</div>}</div>
                   <button className="account-menu-item" onClick={()=>{setNameInput(profile.username);setEditingName(true);setMenuOpen(false);}}>✏️ Cambiar mi nombre</button>
                   {currentGroup&&user.id===currentGroup.owner_id&&<button className="account-menu-item" onClick={()=>{copyInviteCode();setMenuOpen(false);}}>🔗 Copiar enlace de invitación</button>}
-                  <button className="account-menu-item" onClick={()=>{setCurrentGroup(null);setGroupMembers([]);setMenuOpen(false);}}>🔄 Mis grupos / unirme a otro</button>
+                  <button className="account-menu-item" onClick={()=>{setCurrentGroup(null);setGroupMembers([]);setForceGroupScreen(true);setMenuOpen(false);}}>🔄 Mis grupos / unirme a otro</button>
                   <button className="account-menu-item" onClick={()=>{setShowSuggestions(true);setMenuOpen(false);}}>💡 Sugerencias / Más trivias</button>
-                  <button className="account-menu-item" onClick={()=>{setMenuOpen(false);sb.auth.signOut();}}>↩️ Cerrar sesión</button>
+                  <button className="account-menu-item" onClick={async()=>{setMenuOpen(false);try{const{error}=await sb.auth.signOut();if(error)alert('Error al cerrar sesión: '+error.message);}catch(e){alert('Error al cerrar sesión: '+e.message);}}}>↩️ Cerrar sesión</button>
                   <div className="account-menu-divider"/>
                   <button className="account-menu-item danger" onClick={deleteAccount}>🗑️ Eliminar mi cuenta (permanente)</button>
                 </div>
@@ -1236,7 +1237,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v5.3</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v5.5</p>
     </div></div>
   );
 }
@@ -1368,14 +1369,14 @@ function MoveBadge({move}){
 }
 
 function RankingsTab({rankings,userId,loading,onRefresh,groupName,predDeadline}){
-  const[showIntro,setShowIntro]=useState(()=>{try{return!localStorage.getItem('wc26_pred_intro_seen_v2');}catch(_){return false;}});
-  function closeIntro(){try{localStorage.setItem('wc26_pred_intro_seen_v2','1');}catch(_){}setShowIntro(false);}
+  const stillOpen=predDeadline?Date.now()<new Date(predDeadline).getTime():false;
+  const[showIntro,setShowIntro]=useState(stillOpen); // antes del cierre: aparece SIEMPRE al entrar a Ranking
   if(loading)return<div className="loading"><div className="spinner"/><span>Cargando ranking...</span></div>;
   const hasMovement=rankings.some(e=>e.move!=null);
   const snapLabel=rankings.find(e=>e.snapMatchLabel)?.snapMatchLabel;
   return(
     <div>
-      {showIntro&&<PredictionsIntroModal onClose={closeIntro} deadline={predDeadline}/>}
+      {showIntro&&<PredictionsIntroModal onClose={()=>setShowIntro(false)} deadline={predDeadline}/>}
       <div className="tab-section"><div style={{flex:1}}><div className="section-title" style={{marginBottom:2}}>RANKING</div>{groupName&&<div style={{fontSize:'0.75rem',color:'var(--accent2)',fontWeight:600,letterSpacing:0.5,marginBottom:'0.5rem',textTransform:'uppercase'}}>{groupName}</div>}</div><button className="refresh-btn" onClick={onRefresh}>↻ Actualizar</button></div>
       {hasMovement&&snapLabel&&<div style={{fontSize:'0.72rem',color:'var(--muted)',textAlign:'center',marginBottom:'0.75rem',padding:'6px 12px',background:'rgba(255,255,255,0.03)',borderRadius:8}}>Movimiento tras: <strong style={{color:'var(--text)'}}>{snapLabel}</strong></div>}
       {rankings.length===0&&<div className="empty-state">¡Haz tus picks para aparecer en el ranking!</div>}
