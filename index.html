@@ -23,6 +23,9 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .header{background:#0a0e1a;border-bottom:1px solid var(--border);padding:0 1.5rem;position:sticky;top:0;z-index:100;}
 .header-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:60px;}
 .logo{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:2px;color:var(--accent);}
+.logo-row{display:flex;align-items:center;gap:12px;}
+.more-trivias-btn{background:rgba(232,255,71,0.1);border:1px solid rgba(232,255,71,0.3);border-radius:20px;padding:6px 14px;font-size:0.75rem;font-weight:700;color:var(--accent);cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;}
+.more-trivias-btn:hover{background:rgba(232,255,71,0.18);}
 .logo span{color:var(--accent2);}
 .nav{display:flex;gap:4px;}
 .nav-btn{background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:500;padding:6px 14px;border-radius:20px;cursor:pointer;transition:all 0.2s;letter-spacing:0.5px;text-transform:uppercase;}
@@ -167,6 +170,19 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 
 .pred-banner{background:rgba(0,212,255,0.07);border:1px solid rgba(0,212,255,0.2);border-radius:10px;padding:12px 14px;font-size:0.82rem;color:var(--text);margin-bottom:1.25rem;line-height:1.5;}
 .pred-group-title{font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:1.5px;color:var(--accent2);margin:1.5rem 0 0.7rem;}
+.info-btn{background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;font-size:0.95rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.links-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:1.25rem;}
+.links-row-item{flex:1;min-width:160px;text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:0.78rem;font-weight:600;color:var(--accent2);text-decoration:none;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:400;display:flex;align-items:center;justify-content:center;padding:1.25rem;}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:1.5rem;max-width:480px;width:100%;max-height:85vh;overflow-y:auto;}
+.modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+.modal-title{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:1px;}
+.modal-x{background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;line-height:1;padding:0;}
+.modal-sub{color:var(--muted);font-size:0.85rem;line-height:1.55;margin-top:0.75rem;}
+.intro-pred-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);}
+.intro-pred-label{font-size:0.85rem;font-weight:600;}
+.intro-pred-desc{font-size:0.72rem;color:var(--muted);margin-top:1px;}
+.intro-link{display:block;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:0.82rem;font-weight:600;color:var(--accent2);text-decoration:none;margin-bottom:8px;}
 .pred-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;}
 .pred-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;}
 .pred-label{font-weight:600;font-size:0.92rem;}
@@ -202,6 +218,9 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .day-count{font-size:0.72rem;background:rgba(232,255,71,0.12);color:var(--accent);padding:2px 9px;border-radius:20px;font-weight:700;}
 .day-caret{font-size:0.65rem;color:var(--muted);}
 .check-row{display:flex;align-items:flex-start;gap:10px;font-size:0.82rem;color:var(--muted);margin-bottom:10px;cursor:pointer;line-height:1.4;text-transform:none;letter-spacing:0;}
+.suggest-options{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+.suggest-opt{flex:1;min-width:90px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 10px;font-size:0.8rem;font-weight:600;color:var(--text);cursor:pointer;text-align:center;font-family:'DM Sans',sans-serif;}
+.suggest-opt.selected{background:rgba(232,255,71,0.15);border-color:var(--accent);color:var(--accent);}
 .check-row input{margin-top:2px;width:16px;height:16px;flex:0 0 auto;accent-color:var(--accent);cursor:pointer;}
 .check-row a{color:var(--accent);text-decoration:underline;}
 .account-menu-head{font-size:0.82rem;color:var(--text);font-weight:700;padding:8px 12px 8px;border-bottom:1px solid var(--border);margin-bottom:4px;}
@@ -212,13 +231,16 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 @media(max-width:600px){
   .header{padding:0 1rem;}
   .header-inner{flex-wrap:wrap;height:auto;padding:10px 0;gap:8px;}
-  .logo{order:1;font-size:1.1rem;line-height:1;white-space:nowrap;}
+  .logo-row{order:1;}
+  .logo{font-size:1.1rem;line-height:1;white-space:nowrap;}
+  .more-trivias-btn{font-size:0.68rem;padding:5px 10px;}
   .user-bar{order:2;margin-left:auto;}
   .nav{order:3;width:100%;overflow-x:auto;flex-wrap:nowrap;gap:4px;padding-bottom:2px;-webkit-overflow-scrolling:touch;}
   .nav::-webkit-scrollbar{display:none;}
   .nav-btn{flex:0 0 auto;white-space:nowrap;padding:7px 14px;}
 }
 @media(max-width:600px){.group-badge{font-size:0.65rem;padding:3px 8px;max-width:110px;}}
+@media(max-width:420px){.more-trivias-btn span.full-label{display:none;}}
 </style>
 </head>
 <body>
@@ -360,6 +382,30 @@ function Countdown({matchTime}){
   );
 }
 
+function DeadlineCountdown({deadline,label}){
+  const getDiff=()=>new Date(deadline)-new Date();
+  const[diff,setDiff]=useState(getDiff());
+  useEffect(()=>{const t=setInterval(()=>setDiff(getDiff()),1000);return()=>clearInterval(t);},[deadline]);
+  if(diff<=0)return null;
+  const totalH=Math.floor(diff/3600000);
+  const days=Math.floor(totalH/24),h=totalH%24;
+  const s=Math.floor(diff/1000),m=Math.floor((s%3600)/60),sec=s%60;
+  const pad=n=>String(n).padStart(2,'0');
+  return(
+    <div className="countdown-bar">
+      <span className="countdown-label">⏳ {label||'Cierra en'}</span>
+      <div className="countdown-digits">
+        {days>0&&<><div className="cd-block"><div className="cd-num">{days}</div><div className="cd-unit">días</div></div><span className="cd-sep">:</span></>}
+        <div className="cd-block"><div className="cd-num">{pad(h)}</div><div className="cd-unit">hrs</div></div>
+        <span className="cd-sep">:</span>
+        <div className="cd-block"><div className="cd-num">{pad(m)}</div><div className="cd-unit">min</div></div>
+        <span className="cd-sep">:</span>
+        <div className="cd-block"><div className="cd-num">{pad(sec)}</div><div className="cd-unit">seg</div></div>
+      </div>
+    </div>
+  );
+}
+
 function OnboardingScreen({username,onDone}){
   const[step,setStep]=useState(0);
   const steps=[
@@ -478,6 +524,7 @@ function App(){
   const[pendingSessionId]=useState(()=>{try{const p=new URLSearchParams(window.location.search);return(p.get('payment')==='success'&&p.get('session_id'))?p.get('session_id'):null;}catch(_){return null;}});
   const[joinCode,setJoinCode]=useState(()=>{try{const p=new URLSearchParams(window.location.search);const c=p.get('join');return c?c.toUpperCase():null;}catch(_){return null;}});
   const[editingName,setEditingName]=useState(false);
+  const[showSuggestions,setShowSuggestions]=useState(false);
   const[nameInput,setNameInput]=useState('');
   const[savingName,setSavingName]=useState(false);
   const[recoveryMode,setRecoveryMode]=useState(()=>{
@@ -824,15 +871,17 @@ function App(){
   if(!currentGroup&&!isAdmin)return<GroupSelectionScreen user={user} profile={profile} myGroups={myGroups} joinCode={joinCode} onJoinCodeUsed={()=>setJoinCode(null)} onGroupSelected={async(g)=>{await loadGroupMembers(g.id);setCurrentGroup(g);}}/>;
   const myPoints=Object.values(picks).reduce((acc,pick)=>{const match=matches.find(m=>m.id===pick.match_id);if(!match||match.home_score==null)return acc;return acc+calcPoints(pick,match);},0);
   const myPredPoints=calcPredictionPoints(prediction,predResults);
-  const octavosTimes=matches.filter(m=>m.stage==='Octavos').map(m=>new Date(m.match_time).getTime());
-  const octavosStart=octavosTimes.length?Math.min(...octavosTimes):null;
-  const predLocked=octavosStart?Date.now()>=octavosStart:false;
+  const PRED_DEADLINE='2026-06-28T19:00:00+00:00'; // 28 jun 2026, 1:00 PM CDMX (1h antes del primer partido de 16avos)
+  const predLocked=Date.now()>=new Date(PRED_DEADLINE).getTime();
 
   return(
     <div className="app">
       <header className="header">
         <div className="header-inner">
-          <div className="logo">TRIVIA <span>MUNDIALISTA</span></div>
+          <div className="logo-row">
+            <div className="logo">TRIVIA <span>MUNDIALISTA</span></div>
+            <button className="more-trivias-btn" onClick={()=>setShowSuggestions(true)}>💡 Más trivias</button>
+          </div>
           <nav className="nav">
             <button className={`nav-btn ${tab==='picks'?'active':''}`} onClick={()=>setTab('picks')}>Partidos</button>
             <button className={`nav-btn ${tab==='rankings'?'active':''}`} onClick={()=>{setTab('rankings');loadRankings();}}>Ranking</button>
@@ -854,6 +903,7 @@ function App(){
                   <button className="account-menu-item" onClick={()=>{setNameInput(profile.username);setEditingName(true);setMenuOpen(false);}}>✏️ Cambiar mi nombre</button>
                   {currentGroup&&user.id===currentGroup.owner_id&&<button className="account-menu-item" onClick={()=>{copyInviteCode();setMenuOpen(false);}}>🔗 Copiar enlace de invitación</button>}
                   <button className="account-menu-item" onClick={()=>{setCurrentGroup(null);setGroupMembers([]);setMenuOpen(false);}}>🔄 Mis grupos / unirme a otro</button>
+                  <button className="account-menu-item" onClick={()=>{setShowSuggestions(true);setMenuOpen(false);}}>💡 Sugerencias / Más trivias</button>
                   <button className="account-menu-item" onClick={()=>{setMenuOpen(false);sb.auth.signOut();}}>↩️ Cerrar sesión</button>
                   <div className="account-menu-divider"/>
                   <button className="account-menu-item danger" onClick={deleteAccount}>🗑️ Eliminar mi cuenta (permanente)</button>
@@ -863,6 +913,7 @@ function App(){
           </div>
         </div>
       </header>
+      {showSuggestions&&<SuggestionsModal onClose={()=>setShowSuggestions(false)} userId={user.id}/>}
       {editingName&&(
         <div onClick={()=>!savingName&&setEditingName(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.6)',zIndex:300,display:'flex',alignItems:'center',justifyContent:'center',padding:'1.5rem'}}>
           <div onClick={e=>e.stopPropagation()} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:16,padding:'1.75rem',width:'100%',maxWidth:380}}>
@@ -889,8 +940,8 @@ function App(){
             )}
           </div>
         )}
-        {tab==='rankings'&&<RankingsTab rankings={getRankings()} userId={user.id} loading={rankingsLoading} onRefresh={loadRankings} groupName={currentGroup?currentGroup.name:'Global'} snapshots={snapshots}/>}
-        {tab==='predicciones'&&<PredictionsTab prediction={prediction} savePrediction={savePrediction} locked={predLocked} octavosStart={octavosStart}/>}
+        {tab==='rankings'&&<RankingsTab rankings={getRankings()} userId={user.id} loading={rankingsLoading} onRefresh={loadRankings} groupName={currentGroup?currentGroup.name:'Global'} snapshots={snapshots} predDeadline={PRED_DEADLINE}/>}
+        {tab==='predicciones'&&<PredictionsTab prediction={prediction} savePrediction={savePrediction} locked={predLocked} deadline={PRED_DEADLINE}/>}
         {tab==='admin'&&isAdmin&&<AdminTab matches={matches} adminScores={adminScores} setAdminScores={setAdminScores} saveAdminScore={saveAdminScore} adminSaving={adminSaving} predResults={predResults} savePredResult={savePredResult}/>}
       </main>
       <LegalFooter/>
@@ -1050,6 +1101,80 @@ function LegalFooter(){
   );
 }
 
+function SuggestionsModal({onClose,userId}){
+  const[improvement,setImprovement]=useState('');
+  const[wantsMore,setWantsMore]=useState('');
+  const[willingToPay,setWillingToPay]=useState('');
+  const[contact,setContact]=useState('');
+  const[saving,setSaving]=useState(false);
+  const[done,setDone]=useState(false);
+  async function submit(){
+    if(!wantsMore||!willingToPay){alert('Por favor responde las preguntas 2 y 3 antes de enviar.');return;}
+    setSaving(true);
+    const{error}=await sb.from('suggestions').insert({
+      user_id:userId,
+      improvement_text:improvement.trim()||null,
+      wants_more_quinielas:wantsMore,
+      willing_to_pay:willingToPay,
+      contact:contact.trim()||null,
+    });
+    setSaving(false);
+    if(error){alert('No se pudo enviar: '+error.message);return;}
+    setDone(true);
+  }
+  if(done)return(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={e=>e.stopPropagation()} style={{textAlign:'center'}}>
+        <div style={{fontSize:'2.5rem',marginBottom:'0.5rem'}}>🎉</div>
+        <div className="modal-title">¡Gracias!</div>
+        <p className="modal-sub">Tu respuesta nos ayuda a decidir qué sigue. Si dejaste tu contacto, te avisamos cuando haya algo nuevo.</p>
+        <button className="btn btn-primary" style={{marginTop:'1rem'}} onClick={onClose}>Cerrar</button>
+      </div>
+    </div>
+  );
+  return(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={e=>e.stopPropagation()}>
+        <div className="modal-head">
+          <div className="modal-title">💡 Más trivias</div>
+          <button className="modal-x" onClick={onClose}>✕</button>
+        </div>
+        <p className="modal-sub">Estamos pensando en armar trivias para otros torneos (Liga MX, NFL, y más). Tu opinión nos ayuda a decidir qué construir.</p>
+
+        <div className="field" style={{marginTop:'1.25rem'}}>
+          <label>1. ¿Cómo crees que pueda mejorar la plataforma?</label>
+          <textarea value={improvement} onChange={e=>setImprovement(e.target.value)} placeholder="Tu opinión (opcional)" rows={3} style={{width:'100%',resize:'vertical',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontFamily:'DM Sans,sans-serif',fontSize:'0.9rem',padding:'10px 12px'}}/>
+        </div>
+
+        <div className="field">
+          <label>2. ¿Te interesaría armar tus propias trivias de otros torneos (Liga MX, NFL, etc.) en esta plataforma?</label>
+          <div className="suggest-options">
+            {['Sí','No','Tal vez'].map(opt=>(
+              <button key={opt} className={`suggest-opt ${wantsMore===opt?'selected':''}`} onClick={()=>setWantsMore(opt)}>{opt}</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="field">
+          <label>3. ¿Estarías dispuest@ a pagar $200 por grupo?</label>
+          <div className="suggest-options">
+            {['Sí, sin duda','Tal vez, depende','No'].map(opt=>(
+              <button key={opt} className={`suggest-opt ${willingToPay===opt?'selected':''}`} onClick={()=>setWillingToPay(opt)}>{opt}</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="field">
+          <label>4. Contacto (opcional)</label>
+          <input value={contact} onChange={e=>setContact(e.target.value)} placeholder="Correo o teléfono, si quieres que te avisemos"/>
+        </div>
+
+        <button className="btn btn-primary" style={{marginTop:'0.5rem'}} onClick={submit} disabled={saving}>{saving?'Enviando...':'Enviar →'}</button>
+      </div>
+    </div>
+  );
+}
+
 function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess}){
   const[email,setEmail]=useState('');
   const[password,setPassword]=useState('');
@@ -1111,7 +1236,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v4.9</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v5.2</p>
     </div></div>
   );
 }
@@ -1242,12 +1367,15 @@ function MoveBadge({move}){
   return<span className="mv-badge mv-same">—</span>;
 }
 
-function RankingsTab({rankings,userId,loading,onRefresh,groupName}){
+function RankingsTab({rankings,userId,loading,onRefresh,groupName,predDeadline}){
+  const[showIntro,setShowIntro]=useState(()=>{try{return!localStorage.getItem('wc26_pred_intro_seen');}catch(_){return false;}});
+  function closeIntro(){try{localStorage.setItem('wc26_pred_intro_seen','1');}catch(_){}setShowIntro(false);}
   if(loading)return<div className="loading"><div className="spinner"/><span>Cargando ranking...</span></div>;
   const hasMovement=rankings.some(e=>e.move!=null);
   const snapLabel=rankings.find(e=>e.snapMatchLabel)?.snapMatchLabel;
   return(
     <div>
+      {showIntro&&<PredictionsIntroModal onClose={closeIntro} deadline={predDeadline}/>}
       <div className="tab-section"><div style={{flex:1}}><div className="section-title" style={{marginBottom:2}}>RANKING</div>{groupName&&<div style={{fontSize:'0.75rem',color:'var(--accent2)',fontWeight:600,letterSpacing:0.5,marginBottom:'0.5rem',textTransform:'uppercase'}}>{groupName}</div>}</div><button className="refresh-btn" onClick={onRefresh}>↻ Actualizar</button></div>
       {hasMovement&&snapLabel&&<div style={{fontSize:'0.72rem',color:'var(--muted)',textAlign:'center',marginBottom:'0.75rem',padding:'6px 12px',background:'rgba(255,255,255,0.03)',borderRadius:8}}>Movimiento tras: <strong style={{color:'var(--text)'}}>{snapLabel}</strong></div>}
       {rankings.length===0&&<div className="empty-state">¡Haz tus picks para aparecer en el ranking!</div>}
@@ -1381,7 +1509,55 @@ function PlayerPicker({value,onChange,locked,gkOnly=false}){
   );
 }
 
-function PredictionsTab({prediction,savePrediction,locked,octavosStart}){
+function PredictionsIntroModal({onClose,deadline}){
+  const TEAM_PREDS=[
+    {label:'🏆 Campeón del mundo',pts:20,desc:'¿Quién levanta la copa?'},
+    {label:'🥈 Finalista (subcampeón)',pts:12,desc:'El equipo que pierde la final.'},
+    {label:'🥉 Tercer lugar',pts:8,desc:'Ganador del partido por el 3er puesto.'},
+    {label:'🎲 Caballo negro del torneo',pts:10,desc:'Una selección que sorprenda por encima de lo esperado.'},
+  ];
+  const PLAYER_PREDS=[
+    {label:'👟 Bota de oro (más goles)',pts:15,desc:'El máximo goleador del Mundial.'},
+    {label:'🧤 Más arcos en cero',pts:12,desc:'El portero con más partidos sin recibir gol.'},
+    {label:'🎯 Más asistencias',pts:12,desc:'El jugador con más asistencias del torneo.'},
+  ];
+  return(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={e=>e.stopPropagation()}>
+        <div className="modal-head">
+          <div className="modal-title">🔮 ¡Hora de tus Predicciones!</div>
+          <button className="modal-x" onClick={onClose}>✕</button>
+        </div>
+        <p className="modal-sub">Elige tus picks para todo el Mundial. Se mantienen <strong>secretos</strong> hasta que termine la fase de grupos. Cierran el <strong>28 de junio, antes de la 1:00 PM (hora CDMX)</strong> — justo antes del primer partido de 16avos. ¡Solo tienes una oportunidad, elige con cuidado!</p>
+        {deadline&&<DeadlineCountdown deadline={deadline} label="Cierran en"/>}
+        <div className="pred-group-title" style={{marginTop:'1rem'}}>⚽ Predicciones de equipo</div>
+        {TEAM_PREDS.map(p=>(
+          <div key={p.label} className="intro-pred-row">
+            <div><div className="intro-pred-label">{p.label}</div><div className="intro-pred-desc">{p.desc}</div></div>
+            <span className="pred-pts">{p.pts} pts</span>
+          </div>
+        ))}
+        <div className="pred-group-title">🌟 Predicciones de jugador</div>
+        {PLAYER_PREDS.map(p=>(
+          <div key={p.label} className="intro-pred-row">
+            <div><div className="intro-pred-label">{p.label}</div><div className="intro-pred-desc">{p.desc}</div></div>
+            <span className="pred-pts">{p.pts} pts</span>
+          </div>
+        ))}
+        <div className="pred-group-title">🔗 Para ayudarte a decidir</div>
+        <a className="intro-link" href="https://www.bbc.com/sport/football/world-cup/schedule#KnockoutStage" target="_blank" rel="noopener">
+          📅 Ver partidos de eliminatorias (hasta el momento) ↗
+        </a>
+        <a className="intro-link" href="https://www.google.com/search?q=estad%C3%ADsticas+de+mundial" target="_blank" rel="noopener">
+          📊 Ver estadísticas actuales (goles, asistencias...) ↗
+        </a>
+        <button className="btn btn-primary" style={{marginTop:'1.25rem'}} onClick={onClose}>Entendido, ¡vamos! →</button>
+      </div>
+    </div>
+  );
+}
+
+function PredictionsTab({prediction,savePrediction,locked,deadline}){
   const TEAM_PREDS=[
     {key:'champion',label:'🏆 Campeón del mundo',pts:20},
     {key:'finalist',label:'🥈 Finalista (subcampeón)',pts:12},
@@ -1393,13 +1569,24 @@ function PredictionsTab({prediction,savePrediction,locked,octavosStart}){
     {key:'clean_sheets',label:'🧤 Más arcos en cero',pts:12},
     {key:'assists',label:'🎯 Más asistencias',pts:12},
   ];
-  const lockStr=octavosStart?new Date(octavosStart).toLocaleDateString('es-MX',{day:'numeric',month:'long'}):'el inicio de octavos';
+  const[showIntro,setShowIntro]=useState(()=>{try{return!localStorage.getItem('wc26_pred_intro_seen');}catch(_){return false;}});
+  function closeIntro(){try{localStorage.setItem('wc26_pred_intro_seen','1');}catch(_){}setShowIntro(false);}
+  const lockStr='28 de junio, antes de la 1:00 PM (hora CDMX)';
   return(
     <div style={{maxWidth:680,margin:'0 auto'}}>
-      <div className="tab-section"><div className="section-title">PREDICCIONES</div></div>
+      {showIntro&&<PredictionsIntroModal onClose={closeIntro} deadline={deadline}/>}
+      <div className="tab-section">
+        <div className="section-title">PREDICCIONES</div>
+        <button className="info-btn" onClick={()=>setShowIntro(true)} title="Ver guía de predicciones">ℹ️</button>
+      </div>
       <div className="pred-banner">
-        <div>✏️ {locked?<span>Las predicciones están <strong>cerradas</strong> (ya comenzaron los octavos).</span>:<span>Puedes editarlas hasta <strong>{lockStr}</strong>, antes del primer partido de octavos.</span>}</div>
+        <div>✏️ {locked?<span>Las predicciones están <strong>cerradas</strong> (ya comenzó la fase de 16avos).</span>:<span>Puedes editarlas hasta el <strong>{lockStr}</strong>, justo antes del primer partido de 16avos.</span>}</div>
         <div style={{marginTop:6,opacity:0.85}}>🔒 Son secretas hasta que termine la fase de grupos; después se revelan a todos.</div>
+      </div>
+      {!locked&&<DeadlineCountdown deadline={deadline} label="Predicciones cierran en"/>}
+      <div className="links-row">
+        <a className="links-row-item" href="https://www.bbc.com/sport/football/world-cup/schedule#KnockoutStage" target="_blank" rel="noopener">📅 Partidos de eliminatorias ↗</a>
+        <a className="links-row-item" href="https://www.google.com/search?q=estad%C3%ADsticas+de+mundial" target="_blank" rel="noopener">📊 Estadísticas actuales ↗</a>
       </div>
       <div className="pred-group-title">⚽ Predicciones de equipo</div>
       {TEAM_PREDS.map(p=>(
