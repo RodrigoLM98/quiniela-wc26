@@ -151,6 +151,9 @@ body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min
 .admin-vs{font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--muted);}
 .score-inputs{display:flex;align-items:center;gap:8px;}
 .score-input{width:50px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:1.1rem;font-weight:600;padding:7px;text-align:center;outline:none;}
+.knockout-score-row{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:8px;}
+.ko-team-mini{display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;min-width:70px;}
+.ko-team-mini .team-flag{font-size:1.1rem;}
 .score-input:focus{border-color:var(--accent);}
 .score-dash{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;color:var(--muted);}
 .btn-sm{padding:7px 14px;border-radius:7px;border:none;font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:600;cursor:pointer;transition:all 0.2s;background:var(--accent);color:#0a0e1a;}
@@ -314,7 +317,17 @@ function isClosingSoon(mt){const d=getTimeUntilLock(mt);return d>0&&d<6*60*60*10
 function formatMatchTime(mt){const d=new Date(mt);return d.toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short',timeZone:'America/Mexico_City'})+' · '+d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',timeZone:'America/Mexico_City'});}
 function getAvatarColor(name){const s=name||'?';const c=['#e8ff47','#00d4ff','#ff6b9d','#7c3aed','#f59e0b','#10b981'];let h=0;for(let x of s)h=(h*31+x.charCodeAt(0))%c.length;return c[h];}
 function getInitials(name){return (name||'?').split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2)||'?';}
+function calcPointsKnockout(pick,match){
+  if(match.home_score==null||match.away_score==null||!match.winner)return 0;
+  let pts=0;
+  if(pick.result&&pick.result===match.winner)pts+=3;
+  if(pick.home_goals!=null&&pick.away_goals!=null&&pick.home_goals===match.home_score&&pick.away_goals===match.away_score)pts+=2;
+  if(pick.home_goals!=null&&pick.away_goals!=null&&(pick.home_goals+pick.away_goals)===(match.home_score+match.away_score))pts+=1;
+  return pts;
+}
 function calcPoints(pick,match){
+  if(!pick)return 0;
+  if(match.stage!=='Grupos')return calcPointsKnockout(pick,match);
   if(match.home_score==null||match.away_score==null)return 0;
   let pts=0;
   const actual=match.home_score>match.away_score?'home':match.away_score>match.home_score?'away':'draw';
@@ -769,6 +782,22 @@ function App(){
 
   const picksRef=useRef({});
   useEffect(()=>{picksRef.current=picks;},[picks]);
+  const savePickMulti=useCallback(async function(matchId,fields){
+    if(!user)return;
+    const existing=picksRef.current[matchId]||{};
+    const optimistic={...existing,user_id:user.id,match_id:matchId,...fields,updated_at:new Date().toISOString()};
+    setPicks(prev=>({...prev,[matchId]:optimistic}));
+    const payload={...existing,user_id:user.id,match_id:matchId,...fields};
+    const{data,error}=await sb.from('picks').upsert(payload,{onConflict:'user_id,match_id'}).select().single();
+    if(error){
+      setPicks(prev=>({...prev,[matchId]:existing}));
+      alert('⚠️ Tu pick NO se guardó ('+(error.message||'error de conexión')+').\n\nRevisa tu conexión a internet e inténtalo de nuevo. Verifica que tu selección siga marcada.');
+      return;
+    }
+    if(data){setPicks(prev=>({...prev,[matchId]:data}));}
+    setJustSaved(`${matchId}-multi`);
+  },[user]);
+
   const savePick=useCallback(async function(matchId,field,value){
     if(!user)return;
     const existing=picksRef.current[matchId]||{};
@@ -790,13 +819,25 @@ function App(){
     const s=adminScores[matchId];if(!s)return;
     const hs=parseInt(s.home,10),as=parseInt(s.away,10);
     if(!Number.isFinite(hs)||!Number.isFinite(as)||hs<0||as<0){alert('Ingresa marcadores válidos (números mayores o iguales a 0).');return;}
+    const match=matches.find(m=>m.id===matchId);
+    let winner=null;
+    if(match&&match.stage!=='Grupos'){
+      if(hs===as){
+        if(!s.winner){alert('Es empate en 120 min — elige quién avanza por penales antes de guardar.');return;}
+        winner=s.winner;
+      }else{
+        winner=hs>as?'home':'away';
+      }
+    }
     setAdminSaving(matchId);
     // Snapshot vía SQL para que no dependa del estado del cliente
     await sb.rpc('take_ranking_snapshot',{p_match_id:matchId}).then(({error})=>{
       if(error)console.warn('Snapshot warning:',error.message);
     });
-    await sb.from('matches').update({home_score:hs,away_score:as,status:'finished'}).eq('id',matchId);
-    setMatches(prev=>prev.map(m=>m.id===matchId?{...m,home_score:hs,away_score:as,status:'finished'}:m));
+    const updatePayload={home_score:hs,away_score:as,status:'finished'};
+    if(winner)updatePayload.winner=winner;
+    await sb.from('matches').update(updatePayload).eq('id',matchId);
+    setMatches(prev=>prev.map(m=>m.id===matchId?{...m,...updatePayload}:m));
     await loadRankings();
     setAdminSaving(null);
   }
@@ -932,7 +973,7 @@ function App(){
       <main className="main">
         {tab==='picks'&&(
           <div className="picks-layout">
-            <PicksTab matches={matches} picks={picks} stageFilter={stageFilter} setStageFilter={setStageFilter} savePick={savePick} justSaved={justSaved} onGroupChange={onGroupChange} scrollToStandings={scrollToStandings}/>
+            <PicksTab matches={matches} picks={picks} stageFilter={stageFilter} setStageFilter={setStageFilter} savePick={savePick} savePickMulti={savePickMulti} justSaved={justSaved} onGroupChange={onGroupChange} scrollToStandings={scrollToStandings}/>
             {stageFilter==='Grupos'&&(
               <div className="sidebar" id="standings-sidebar">
                 <GroupStandings matches={matches} selectedGroup={selectedGroup} onSelectGroup={onGroupChange}/>
@@ -1236,7 +1277,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v5.7</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v6.0</p>
     </div></div>
   );
 }
@@ -1249,33 +1290,66 @@ function RulesBanner(){
         <span>📜 Reglas de la trivia</span><span style={{fontSize:'0.7rem'}}>{open?'▲ ocultar':'▼ ver'}</span>
       </button>
       {open&&<ul className="rules-list">
-        <li>⚽ Atinar el <strong>resultado</strong> (local, empate o visitante): <strong>3 pts</strong></li>
-        <li>🥅 Atinar los <strong>goles totales</strong> del partido (0, 1, 2, 3 o 4+): <strong>+1 pt</strong></li>
+        <li>⚽ <strong>Fase de grupos:</strong> atinar el resultado (local/empate/visitante) = <strong>3 pts</strong>; atinar los goles totales (0,1,2,3 o 4+) = <strong>+1 pt</strong>.</li>
+        <li>🏟️ <strong>Eliminatorias (16avos+):</strong> predices el marcador a 120 min. Atinar quién avanza = <strong>3 pts</strong>; marcador exacto = <strong>+2 pts</strong>; goles totales correctos = <strong>+1 pt</strong> (máx. 6 pts/partido). Si tu marcador es empate, elige quién avanza por penales.</li>
         <li>🔒 Cada partido <strong>cierra 1 hora antes</strong> de su inicio. Sin pick = 0 pts en ese partido.</li>
-        <li>🔮 Las <strong>predicciones</strong> (campeón, goleador…) se pueden editar hasta el inicio de los octavos.</li>
+        <li>🔮 Las <strong>predicciones</strong> (campeón, goleador…) se pueden editar hasta el 28 de junio, antes de la 1pm CDMX.</li>
         <li>🏆 Gana quien acumule más puntos al final del Mundial.</li>
       </ul>}
     </div>
   );
 }
 
-function DayGroup({label,matches,picks,savePick,justSaved,onGroupClick,isPast,defaultOpen}){
+function DayGroup({label,matches,picks,savePick,savePickMulti,justSaved,onGroupClick,isPast,defaultOpen}){
   const[open,setOpen]=useState(defaultOpen);
-  const done=matches.filter(m=>picks[m.id]?.result&&picks[m.id]?.goals!=null).length;
+  const done=matches.filter(m=>{
+    const p=picks[m.id];if(!p)return false;
+    if(m.stage!=='Grupos')return p.home_goals!=null&&p.away_goals!=null&&(p.home_goals!==p.away_goals||p.result);
+    return p.result&&p.goals!=null;
+  }).length;
   return(
     <div className={`day-group ${isPast?'past':''}`}>
       <button className="day-head" onClick={()=>setOpen(o=>!o)}>
         <span>{isPast?'✓ ':'📅 '}{label}</span>
         <span className="day-head-right">{isPast&&<span className="day-count">{done}/{matches.length}</span>}<span className="day-caret">{open?'▲':'▼'}</span></span>
       </button>
-      {open&&matches.map(match=><MatchCard key={match.id} match={match} pick={picks[match.id]} savePick={savePick} saved={!!justSaved&&justSaved.startsWith(match.id+'-')} onGroupClick={onGroupClick}/>)}
+      {open&&matches.map(match=><MatchCard key={match.id} match={match} pick={picks[match.id]} savePick={savePick} savePickMulti={savePickMulti} saved={!!justSaved&&justSaved.startsWith(match.id+'-')} onGroupClick={onGroupClick}/>)}
     </div>
   );
 }
 
-function PicksTab({matches,picks,savePick,justSaved,stageFilter,setStageFilter,onGroupChange,scrollToStandings}){
+function KnockoutIntroModal({onClose}){
+  return(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={e=>e.stopPropagation()} style={{textAlign:'center'}}>
+        <div style={{fontSize:'2.8rem',marginBottom:'0.25rem'}}>🔥</div>
+        <div className="modal-title" style={{fontSize:'1.7rem'}}>¡Ya estamos en fase eliminatoria!</div>
+        <p className="modal-sub" style={{textAlign:'left',marginTop:'1rem'}}>
+          A partir de ahora es <strong>todo o nada</strong> — y <strong>las reglas cambian</strong>:
+        </p>
+        <ul className="rules-list" style={{textAlign:'left',marginTop:'0.5rem'}}>
+          <li>🎯 Predices el <strong>marcador a 120 minutos</strong> (con prórroga incluida)</li>
+          <li>🏆 Adivinar quién avanza: <strong>3 pts</strong></li>
+          <li>🎯 Marcador exacto: <strong>+2 pts</strong></li>
+          <li>⚽ Goles totales correctos: <strong>+1 pt</strong></li>
+          <li>🥅 Si tu marcador es empate, eliges quién avanza por penales</li>
+        </ul>
+        <p className="modal-sub" style={{marginTop:'0.75rem'}}>¡Hasta <strong>6 puntos</strong> por partido si la clavas! 🔥</p>
+        <button className="btn btn-primary" style={{marginTop:'1.25rem'}} onClick={onClose}>¡Vamos! →</button>
+      </div>
+    </div>
+  );
+}
+
+function PicksTab({matches,picks,savePick,savePickMulti,justSaved,stageFilter,setStageFilter,onGroupChange,scrollToStandings}){
   const filtered=matches.filter(m=>m.stage===stageFilter);
-  const pickedCount=filtered.filter(m=>picks[m.id]?.result&&picks[m.id]?.goals!=null).length;
+  const isPickComplete=(m)=>{
+    const p=picks[m.id];
+    if(!p)return false;
+    if(m.stage!=='Grupos')return p.home_goals!=null&&p.away_goals!=null&&(p.home_goals!==p.away_goals||p.result);
+    return p.result&&p.goals!=null;
+  };
+  const pickedCount=filtered.filter(isPickComplete).length;
   const pct=filtered.length>0?Math.round((pickedCount/filtered.length)*100):0;
   // Día de hoy en CDMX en formato ISO ordenable (aaaa-mm-dd), recalculado en cada render
   const todayStr=new Date().toLocaleDateString('en-CA',{timeZone:'America/Mexico_City'});
@@ -1286,8 +1360,18 @@ function PicksTab({matches,picks,savePick,justSaved,stageFilter,setStageFilter,o
     if(!acc[key])acc[key]={matches:[],iso:dObj.toLocaleDateString('en-CA',{timeZone:'America/Mexico_City'})};
     acc[key].matches.push(m);return acc;
   },{});
+  const isKnockoutFilter=stageFilter!=='Grupos';
+  const[showKnockoutIntro,setShowKnockoutIntro]=useState(false);
+  useEffect(()=>{
+    if(!isKnockoutFilter)return;
+    try{
+      if(!localStorage.getItem('wc26_knockout_intro_seen')){setShowKnockoutIntro(true);}
+    }catch(_){}
+  },[isKnockoutFilter]);
+  function closeKnockoutIntro(){try{localStorage.setItem('wc26_knockout_intro_seen','1');}catch(_){}setShowKnockoutIntro(false);}
   return(
     <div>
+      {showKnockoutIntro&&<KnockoutIntroModal onClose={closeKnockoutIntro}/>}
       <div className="tab-section"><div className="section-title">TUS PICKS</div></div>
       <RulesBanner/>
       <div className="picks-progress">
@@ -1299,18 +1383,91 @@ function PicksTab({matches,picks,savePick,justSaved,stageFilter,setStageFilter,o
         ?<div className="empty-state">No hay partidos en esta fase aún</div>
         :Object.keys(byDate).map(d=>{
           const isPast=byDate[d].iso<todayStr;
-          return<DayGroup key={d} label={d} matches={byDate[d].matches} picks={picks} savePick={savePick} justSaved={justSaved} onGroupClick={stageFilter==='Grupos'?scrollToStandings:null} isPast={isPast} defaultOpen={!isPast}/>;
+          return<DayGroup key={d} label={d} matches={byDate[d].matches} picks={picks} savePick={savePick} savePickMulti={savePickMulti} justSaved={justSaved} onGroupClick={stageFilter==='Grupos'?scrollToStandings:null} isPast={isPast} defaultOpen={!isPast}/>;
         })
       }
     </div>
   );
 }
 
-const MatchCard=React.memo(function MatchCard({match,pick,savePick,saved,onGroupClick}){
+const MatchCard=React.memo(function MatchCard({match,pick,savePick,savePickMulti,saved,onGroupClick}){
   const locked=isLocked(match.match_time);
   const soon=isClosingSoon(match.match_time);
-  const hasPick=pick?.result&&pick?.goals!=null;
+  const isKnockout=match.stage!=='Grupos';
+  const hasPick=isKnockout
+    ?(pick?.home_goals!=null&&pick?.away_goals!=null&&(pick?.home_goals!==pick?.away_goals||pick?.result))
+    :(pick?.result&&pick?.goals!=null);
   const finished=match.home_score!=null&&match.away_score!=null;
+
+  // Estado local para los inputs de marcador (eliminatorias) — se confirma con savePick al perder foco/cambiar
+  const[hg,setHg]=useState(pick?.home_goals??'');
+  const[ag,setAg]=useState(pick?.away_goals??'');
+  useEffect(()=>{setHg(pick?.home_goals??'');setAg(pick?.away_goals??'');},[pick?.home_goals,pick?.away_goals,match.id]);
+
+  function commitScore(newHg,newAg){
+    const h=newHg===''?null:parseInt(newHg,10);
+    const a=newAg===''?null:parseInt(newAg,10);
+    if(h==null||a==null)return; // campos incompletos: bloquea sin alertar (blur silencioso normal)
+    if(!Number.isFinite(h)||!Number.isFinite(a)||h<0||a<0||h>15||a>15){
+      alert('Ingresa un marcador válido (0 a 15 goles por equipo).');
+      return;
+    }
+    if(h===a){
+      // Empate: guarda el marcador, limpia el ganador para forzar elección
+      savePickMulti(match.id,{home_goals:h,away_goals:a,result:null});
+    }else{
+      // No empate: ganador automático
+      const auto=h>a?'home':'away';
+      savePickMulti(match.id,{home_goals:h,away_goals:a,result:auto});
+    }
+  }
+
+  const isDraw=hg!==''&&ag!==''&&parseInt(hg,10)===parseInt(ag,10);
+
+  if(isKnockout)return(
+    <div className={`match-card ${locked?'locked-card':''} ${hasPick?'picked':''}`}>
+      <div className="match-header">
+        <div className="match-meta">{match.stage}</div>
+        <div className="match-time-str">{formatMatchTime(match.match_time)}</div>
+        <span className={`lock-badge ${locked?'locked':soon?'soon':'open'}`}>{locked?'🔒 Cerrado':soon?'🔥 Cierra pronto':'✅ Abierto'}</span>
+      </div>
+      {soon&&!locked&&<Countdown matchTime={match.match_time}/>}
+      <div className="match-body">
+        {saved&&<div className="pick-saved-toast">✓ Pick guardado</div>}
+        {locked&&!hasPick&&<div className="no-pick">⚠️ Sin pick — este partido cuenta 0 puntos</div>}
+        <div className="teams">
+          <div className="team"><span className="team-flag">{FLAGS[match.home_team]||'🏳️'}</span><div className="team-name">{match.home_team}</div></div>
+          <div className="vs">VS</div>
+          <div className="team"><span className="team-flag">{FLAGS[match.away_team]||'🏳️'}</span><div className="team-name">{match.away_team}</div></div>
+        </div>
+        {finished&&(
+          <div className="result-score">
+            {match.home_score} — {match.away_score} {match.winner&&<span style={{fontSize:'0.78rem',color:'var(--accent2)'}}> · avanza {match.winner==='home'?match.home_team:match.away_team}</span>}
+            {pick&&(()=>{const pts=calcPoints(pick,match);return<span style={{marginLeft:12,fontSize:'0.85rem',color:pts>=3?'var(--green)':'var(--muted)'}}>+{pts} pts</span>;})()}
+          </div>
+        )}
+        <div className="pick-label" style={{marginTop:10}}>Marcador a 120 min (incluye prórroga)</div>
+        <div className="knockout-score-row">
+          <div className="ko-team-mini"><span className="team-flag">{FLAGS[match.home_team]||'🏳️'}</span><span>{match.home_team.split(' ')[0]}</span></div>
+          <input className="score-input" type="number" min="0" max="20" disabled={locked} value={hg} onChange={e=>{setHg(e.target.value);}} onBlur={()=>commitScore(hg,ag)}/>
+          <span className="score-dash">—</span>
+          <input className="score-input" type="number" min="0" max="20" disabled={locked} value={ag} onChange={e=>{setAg(e.target.value);}} onBlur={()=>commitScore(hg,ag)}/>
+          <div className="ko-team-mini"><span>{match.away_team.split(' ')[0]}</span><span className="team-flag">{FLAGS[match.away_team]||'🏳️'}</span></div>
+          <button className="btn-sm" disabled={locked} onClick={()=>commitScore(hg,ag)}>Guardar</button>
+        </div>
+        {isDraw&&(
+          <div className="pick-group" style={{marginTop:10}}>
+            <div className="pick-label">⚠️ Es empate — ¿quién avanza por penales?</div>
+            <div className="pick-options">
+              <button className={`pick-btn ${pick?.result==='home'?'selected':''}`} disabled={locked} onClick={()=>savePick(match.id,'result','home')}>{FLAGS[match.home_team]||''} {match.home_team}</button>
+              <button className={`pick-btn ${pick?.result==='away'?'selected':''}`} disabled={locked} onClick={()=>savePick(match.id,'result','away')}>{FLAGS[match.away_team]||''} {match.away_team}</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return(
     <div className={`match-card ${locked?'locked-card':''} ${hasPick?'picked':''}`}>
       <div className="match-header">
@@ -1468,13 +1625,22 @@ function AdminDayGroup({label,matches,isPast,defaultOpen,done,adminScores,setAdm
               <span className="admin-team-name">{match.away_team}</span>
               <span>{FLAGS[match.away_team]||'🏳️'}</span>
             </div>
-            {match.home_score!=null&&<div style={{fontSize:'0.8rem',color:'var(--green)',marginBottom:8}}>✅ {match.home_score} — {match.away_score}</div>}
+            {match.home_score!=null&&<div style={{fontSize:'0.8rem',color:'var(--green)',marginBottom:8}}>✅ {match.home_score} — {match.away_score}{match.winner&&<span> · avanza {match.winner==='home'?match.home_team:match.away_team}</span>}</div>}
             <div className="score-inputs">
               <input className="score-input" type="number" min="0" max="20" placeholder={match.home_score??'0'} value={adminScores[match.id]?.home??''} onChange={e=>setAdminScores(prev=>({...prev,[match.id]:{...prev[match.id],home:e.target.value}}))}/>
               <span className="score-dash">—</span>
               <input className="score-input" type="number" min="0" max="20" placeholder={match.away_score??'0'} value={adminScores[match.id]?.away??''} onChange={e=>setAdminScores(prev=>({...prev,[match.id]:{...prev[match.id],away:e.target.value}}))}/>
               <button className="btn-sm" onClick={()=>saveAdminScore(match.id)} disabled={adminSaving===match.id}>{adminSaving===match.id?'...':'Guardar'}</button>
             </div>
+            {match.stage!=='Grupos'&&adminScores[match.id]?.home!==undefined&&adminScores[match.id]?.away!==undefined&&adminScores[match.id]?.home===adminScores[match.id]?.away&&adminScores[match.id]?.home!==''&&(
+              <div style={{marginTop:8}}>
+                <div style={{fontSize:'0.72rem',color:'var(--muted)',marginBottom:4}}>⚠️ Empate — ¿quién avanza por penales?</div>
+                <div className="pick-options">
+                  <button className={`pick-btn ${adminScores[match.id]?.winner==='home'?'selected':''}`} onClick={()=>setAdminScores(prev=>({...prev,[match.id]:{...prev[match.id],winner:'home'}}))}>{FLAGS[match.home_team]||''} {match.home_team}</button>
+                  <button className={`pick-btn ${adminScores[match.id]?.winner==='away'?'selected':''}`} onClick={()=>setAdminScores(prev=>({...prev,[match.id]:{...prev[match.id],winner:'away'}}))}>{FLAGS[match.away_team]||''} {match.away_team}</button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>}
