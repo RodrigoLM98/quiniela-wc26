@@ -1277,7 +1277,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v6.0</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v6.1</p>
     </div></div>
   );
 }
@@ -1453,7 +1453,6 @@ const MatchCard=React.memo(function MatchCard({match,pick,savePick,savePickMulti
           <span className="score-dash">—</span>
           <input className="score-input" type="number" min="0" max="20" disabled={locked} value={ag} onChange={e=>{setAg(e.target.value);}} onBlur={()=>commitScore(hg,ag)}/>
           <div className="ko-team-mini"><span>{match.away_team.split(' ')[0]}</span><span className="team-flag">{FLAGS[match.away_team]||'🏳️'}</span></div>
-          <button className="btn-sm" disabled={locked} onClick={()=>commitScore(hg,ag)}>Guardar</button>
         </div>
         {isDraw&&(
           <div className="pick-group" style={{marginTop:10}}>
