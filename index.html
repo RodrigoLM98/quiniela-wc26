@@ -518,7 +518,7 @@ function App(){
   const[loading,setLoading]=useState(true);
   const[authLoading,setAuthLoading]=useState(false);
   const[authError,setAuthError]=useState('');
-  const[stageFilter,setStageFilter]=useState('Grupos');
+  const[stageFilter,setStageFilter]=useState('16avos');
   const[justSaved,setJustSaved]=useState(null);
   const[adminScores,setAdminScores]=useState({});
   const[adminSaving,setAdminSaving]=useState(null);
@@ -1277,7 +1277,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v6.1</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v6.2</p>
     </div></div>
   );
 }
@@ -1360,18 +1360,10 @@ function PicksTab({matches,picks,savePick,savePickMulti,justSaved,stageFilter,se
     if(!acc[key])acc[key]={matches:[],iso:dObj.toLocaleDateString('en-CA',{timeZone:'America/Mexico_City'})};
     acc[key].matches.push(m);return acc;
   },{});
-  const isKnockoutFilter=stageFilter!=='Grupos';
-  const[showKnockoutIntro,setShowKnockoutIntro]=useState(false);
-  useEffect(()=>{
-    if(!isKnockoutFilter)return;
-    try{
-      if(!localStorage.getItem('wc26_knockout_intro_seen')){setShowKnockoutIntro(true);}
-    }catch(_){}
-  },[isKnockoutFilter]);
-  function closeKnockoutIntro(){try{localStorage.setItem('wc26_knockout_intro_seen','1');}catch(_){}setShowKnockoutIntro(false);}
+  const[showKnockoutIntro,setShowKnockoutIntro]=useState(true); // siempre aparece al entrar a Partidos
   return(
     <div>
-      {showKnockoutIntro&&<KnockoutIntroModal onClose={closeKnockoutIntro}/>}
+      {showKnockoutIntro&&<KnockoutIntroModal onClose={()=>setShowKnockoutIntro(false)}/>}
       <div className="tab-section"><div className="section-title">TUS PICKS</div></div>
       <RulesBanner/>
       <div className="picks-progress">
