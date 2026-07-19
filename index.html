@@ -1277,7 +1277,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v6.4</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v6.5</p>
     </div></div>
   );
 }
@@ -1710,6 +1710,24 @@ function PredictionsIntroModal({onClose,deadline}){
   );
 }
 
+function CaballoNegroModal({onClose}){
+  return(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={e=>e.stopPropagation()}>
+        <div style={{textAlign:'center',fontSize:'2.5rem',marginBottom:'0.25rem'}}>🎲</div>
+        <div className="modal-title" style={{textAlign:'center',fontSize:'1.4rem'}}>Caballo negro del torneo: Noruega</div>
+        <p className="modal-sub" style={{marginTop:'1rem'}}>
+          <strong>Criterio:</strong> el equipo no-favorito que llegó más lejos por encima de su expectativa — <strong>cuartos de final</strong>, eliminando a Brasil en octavos, en su primer Mundial en 28 años.
+        </p>
+        <p className="modal-sub" style={{marginTop:'0.75rem'}}>
+          Mención honrosa a <strong>Cabo Verde</strong>, debutante histórico que avanzó a eliminatorias, pero su camino terminó dos rondas antes.
+        </p>
+        <button className="btn btn-primary" style={{marginTop:'1.25rem'}} onClick={onClose}>Entendido</button>
+      </div>
+    </div>
+  );
+}
+
 function PredictionsTab({prediction,savePrediction,locked,deadline,predResults}){
   const TEAM_PREDS=[
     {key:'champion',label:'🏆 Campeón del mundo',pts:20},
@@ -1724,6 +1742,7 @@ function PredictionsTab({prediction,savePrediction,locked,deadline,predResults})
   ];
   const[showIntro,setShowIntro]=useState(()=>{try{return!localStorage.getItem('wc26_pred_intro_seen_v2');}catch(_){return false;}});
   function closeIntro(){try{localStorage.setItem('wc26_pred_intro_seen_v2','1');}catch(_){}setShowIntro(false);}
+  const[showCaballo,setShowCaballo]=useState(true); // aparece cada vez que entras a Predicciones
   const lockStr='28 de junio, antes de la 1:00 PM (hora CDMX)';
   const totalPts=calcPredictionPoints(prediction,predResults);
   const anyResults=predResults&&PRED_DEFS.some(d=>predResults[d.key]);
@@ -1738,6 +1757,7 @@ function PredictionsTab({prediction,savePrediction,locked,deadline,predResults})
   }
   return(
     <div style={{maxWidth:680,margin:'0 auto'}}>
+      {showCaballo&&<CaballoNegroModal onClose={()=>setShowCaballo(false)}/>}
       {showIntro&&<PredictionsIntroModal onClose={closeIntro} deadline={deadline}/>}
       <div className="tab-section">
         <div className="section-title">PREDICCIONES</div>
