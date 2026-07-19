@@ -973,7 +973,7 @@ function App(){
       <main className="main">
         {tab==='picks'&&(
           <div className="picks-layout">
-            <PicksTab matches={matches} picks={picks} stageFilter={stageFilter} setStageFilter={setStageFilter} savePick={savePick} savePickMulti={savePickMulti} justSaved={justSaved} onGroupChange={onGroupChange} scrollToStandings={scrollToStandings}/>
+            <PicksTab matches={matches} picks={picks} stageFilter={stageFilter} setStageFilter={setStageFilter} savePick={savePick} savePickMulti={savePickMulti} justSaved={justSaved} onGroupChange={onGroupChange} scrollToStandings={scrollToStandings} onOpenSuggestions={()=>setShowSuggestions(true)}/>
             {stageFilter==='Grupos'&&(
               <div className="sidebar" id="standings-sidebar">
                 <GroupStandings matches={matches} selectedGroup={selectedGroup} onSelectGroup={onGroupChange}/>
@@ -982,7 +982,7 @@ function App(){
           </div>
         )}
         {tab==='rankings'&&<RankingsTab rankings={getRankings()} userId={user.id} loading={rankingsLoading} onRefresh={loadRankings} groupName={currentGroup?currentGroup.name:'Global'} snapshots={snapshots} predDeadline={PRED_DEADLINE}/>}
-        {tab==='predicciones'&&<PredictionsTab prediction={prediction} savePrediction={savePrediction} locked={predLocked} deadline={PRED_DEADLINE}/>}
+        {tab==='predicciones'&&<PredictionsTab prediction={prediction} savePrediction={savePrediction} locked={predLocked} deadline={PRED_DEADLINE} predResults={predResults}/>}
         {tab==='admin'&&isAdmin&&<AdminTab matches={matches} adminScores={adminScores} setAdminScores={setAdminScores} saveAdminScore={saveAdminScore} adminSaving={adminSaving} predResults={predResults} savePredResult={savePredResult}/>}
       </main>
       <LegalFooter/>
@@ -1277,7 +1277,7 @@ function AuthScreen({onAuth,authMode,setAuthMode,loading,error,registerSuccess})
       </form>
       <p className="auth-toggle">{authMode==='login'?<><span>¿No tienes cuenta? </span><a onClick={()=>setAuthMode('register')}>Regístrate</a></>:<><span>¿Ya tienes cuenta? </span><a onClick={()=>setAuthMode('login')}>Inicia sesión</a></>}</p>
       <LegalFooter/>
-      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v6.3</p>
+      <p style={{textAlign:'center',fontSize:'0.65rem',color:'var(--muted)',opacity:0.5,marginTop:'0.5rem'}}>v6.4</p>
     </div></div>
   );
 }
@@ -1318,30 +1318,26 @@ function DayGroup({label,matches,picks,savePick,savePickMulti,justSaved,onGroupC
   );
 }
 
-function KnockoutIntroModal({onClose}){
+function KnockoutIntroModal({onClose,onOpenSuggestions}){
   return(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box" onClick={e=>e.stopPropagation()} style={{textAlign:'center'}}>
-        <div style={{fontSize:'2.8rem',marginBottom:'0.25rem'}}>🔥</div>
-        <div className="modal-title" style={{fontSize:'1.7rem'}}>¡Ya estamos en fase eliminatoria!</div>
-        <p className="modal-sub" style={{textAlign:'left',marginTop:'1rem'}}>
-          A partir de ahora es <strong>todo o nada</strong> — y <strong>las reglas cambian</strong>:
+        <div style={{fontSize:'2.8rem',marginBottom:'0.25rem'}}>🏆</div>
+        <div className="modal-title" style={{fontSize:'1.6rem'}}>¡España campeón!</div>
+        <p className="modal-sub" style={{marginTop:'1rem'}}>
+          Revisa tu <strong>ranking</strong> y los puntos anotados en <strong>predicciones</strong>.
         </p>
-        <ul className="rules-list" style={{textAlign:'left',marginTop:'0.5rem'}}>
-          <li>🎯 Predices el <strong>marcador a 120 minutos</strong> (con prórroga incluida)</li>
-          <li>🏆 Adivinar quién avanza: <strong>3 pts</strong></li>
-          <li>🎯 Marcador exacto: <strong>+2 pts</strong></li>
-          <li>⚽ Goles totales correctos: <strong>+1 pt</strong></li>
-          <li>🥅 Si tu marcador es empate, eliges quién avanza por penales</li>
-        </ul>
-        <p className="modal-sub" style={{marginTop:'0.75rem'}}>¡Hasta <strong>6 puntos</strong> por partido si la clavas! 🔥</p>
-        <button className="btn btn-primary" style={{marginTop:'1.25rem'}} onClick={onClose}>¡Vamos! →</button>
+        <p className="modal-sub" style={{marginTop:'0.75rem'}}>
+          Gracias por jugar con nosotros 💛 Si quieres repetir con más quinielas, da clic en el botón <strong>Más trivias</strong>.
+        </p>
+        <button className="btn btn-primary" style={{marginTop:'1.25rem'}} onClick={onClose}>Cerrar</button>
+        <button className="btn" style={{marginTop:'0.6rem',background:'transparent',border:'1px solid var(--border)',color:'var(--text)'}} onClick={()=>{onClose();onOpenSuggestions&&onOpenSuggestions();}}>💡 Más trivias</button>
       </div>
     </div>
   );
 }
 
-function PicksTab({matches,picks,savePick,savePickMulti,justSaved,stageFilter,setStageFilter,onGroupChange,scrollToStandings}){
+function PicksTab({matches,picks,savePick,savePickMulti,justSaved,stageFilter,setStageFilter,onGroupChange,scrollToStandings,onOpenSuggestions}){
   const filtered=matches.filter(m=>m.stage===stageFilter);
   const isPickComplete=(m)=>{
     const p=picks[m.id];
@@ -1363,7 +1359,7 @@ function PicksTab({matches,picks,savePick,savePickMulti,justSaved,stageFilter,se
   const[showKnockoutIntro,setShowKnockoutIntro]=useState(true); // siempre aparece al entrar a Partidos
   return(
     <div>
-      {showKnockoutIntro&&<KnockoutIntroModal onClose={()=>setShowKnockoutIntro(false)}/>}
+      {showKnockoutIntro&&<KnockoutIntroModal onClose={()=>setShowKnockoutIntro(false)} onOpenSuggestions={onOpenSuggestions}/>}
       <div className="tab-section"><div className="section-title">TUS PICKS</div></div>
       <RulesBanner/>
       <div className="picks-progress">
@@ -1714,7 +1710,7 @@ function PredictionsIntroModal({onClose,deadline}){
   );
 }
 
-function PredictionsTab({prediction,savePrediction,locked,deadline}){
+function PredictionsTab({prediction,savePrediction,locked,deadline,predResults}){
   const TEAM_PREDS=[
     {key:'champion',label:'🏆 Campeón del mundo',pts:20},
     {key:'finalist',label:'🥈 Finalista (subcampeón)',pts:12},
@@ -1729,6 +1725,17 @@ function PredictionsTab({prediction,savePrediction,locked,deadline}){
   const[showIntro,setShowIntro]=useState(()=>{try{return!localStorage.getItem('wc26_pred_intro_seen_v2');}catch(_){return false;}});
   function closeIntro(){try{localStorage.setItem('wc26_pred_intro_seen_v2','1');}catch(_){}setShowIntro(false);}
   const lockStr='28 de junio, antes de la 1:00 PM (hora CDMX)';
+  const totalPts=calcPredictionPoints(prediction,predResults);
+  const anyResults=predResults&&PRED_DEFS.some(d=>predResults[d.key]);
+  function renderResultTag(key,pts){
+    if(!predResults||!predResults[key])return null;
+    const hit=prediction&&prediction[key]&&prediction[key]===predResults[key];
+    return(
+      <div style={{fontSize:'0.75rem',marginTop:6,color:hit?'var(--green)':'var(--muted)',display:'flex',alignItems:'center',gap:6}}>
+        {hit?`✅ ¡Acertaste! +${pts} pts`:`❌ El resultado fue: ${predResults[key]}`}
+      </div>
+    );
+  }
   return(
     <div style={{maxWidth:680,margin:'0 auto'}}>
       {showIntro&&<PredictionsIntroModal onClose={closeIntro} deadline={deadline}/>}
@@ -1736,6 +1743,11 @@ function PredictionsTab({prediction,savePrediction,locked,deadline}){
         <div className="section-title">PREDICCIONES</div>
         <button className="info-btn" onClick={()=>setShowIntro(true)} title="Ver guía de predicciones">ℹ️</button>
       </div>
+      {anyResults&&(
+        <div className="pred-banner" style={{background:'rgba(232,255,71,0.08)',borderColor:'rgba(232,255,71,0.25)'}}>
+          <div>🎯 Llevas <strong>{totalPts} pts</strong> en predicciones. Revisa abajo cuáles acertaste.</div>
+        </div>
+      )}
       <div className="pred-banner">
         <div>✏️ {locked?<span>Las predicciones están <strong>cerradas</strong> (ya comenzó la fase de 16avos).</span>:<span>Puedes editarlas hasta el <strong>{lockStr}</strong>, justo antes del primer partido de 16avos.</span>}</div>
         <div style={{marginTop:6,opacity:0.85}}>🔒 Son secretas hasta que termine la fase de grupos; después se revelan a todos.</div>
@@ -1754,6 +1766,7 @@ function PredictionsTab({prediction,savePrediction,locked,deadline}){
             <option value="">— Elige selección —</option>
             {ALL_TEAMS.map(t=><option key={t} value={t}>{(FLAGS[t]||'')+' '+t}</option>)}
           </select>
+          {renderResultTag(p.key,p.pts)}
         </div>
       ))}
       <div className="pred-group-title">🌟 Predicciones de jugador</div>
@@ -1762,6 +1775,7 @@ function PredictionsTab({prediction,savePrediction,locked,deadline}){
           <div className="pred-head"><span className="pred-label">{p.label}</span><span className="pred-pts">{p.pts} pts</span></div>
           {locked&&!(prediction&&prediction[p.key])&&<div className="no-pick" style={{marginBottom:8}}>⚠️ Sin predicción — 0 puntos</div>}
           <PlayerPicker value={(prediction&&prediction[p.key])||''} locked={locked} gkOnly={p.key==='clean_sheets'} onChange={v=>savePrediction(p.key,v)}/>
+          {renderResultTag(p.key,p.pts)}
         </div>
       ))}
     </div>
